@@ -18,12 +18,11 @@ export const SCALES = {
   KNUST: {
     name: 'KNUST (Ghana) - 100%',
     grades: {
-      'Excellent': { points: 100, min: 70, max: 100 }, // Simplified
-      'Very Good': { points: 69, min: 60, max: 69 },
-      'Good': { points: 59, min: 50, max: 59 },
-      'Average': { points: 49, min: 40, max: 49 },
-      'Pass': { points: 39, min: 40, max: 49 }, // Adjust as needed
-      'Fail': { points: 0, min: 0, max: 39 }
+      'A': { points: 4.0, min: 70, max: 100 },
+      'B': { points: 3.0, min: 60, max: 69 },
+      'C': { points: 2.0, min: 50, max: 59 },
+      'D': { points: 1.0, min: 45, max: 49 },
+      'F': { points: 0.0, min: 0, max: 44 }
     },
     isPercentage: true
   },
@@ -41,20 +40,40 @@ export const SCALES = {
       'C-': { points: 1.7, min: 70, max: 72 },
       'D+': { points: 1.3, min: 67, max: 69 },
       'D': { points: 1.0, min: 65, max: 66 },
-      'E/F': { points: 0.0, min: 0, max: 64 }
+      'F': { points: 0.0, min: 0, max: 64 }
+    }
+  },
+  UK: {
+    name: 'UK Classifications - 4.0',
+    grades: {
+      'First': { points: 4.0, min: 70, max: 100 },
+      'Upper Second (2:1)': { points: 3.3, min: 60, max: 69 },
+      'Lower Second (2:2)': { points: 2.7, min: 50, max: 59 },
+      'Third': { points: 2.0, min: 40, max: 49 },
+      'Fail': { points: 0.0, min: 0, max: 39 }
     }
   }
 };
 
-export function calculateSemesterGPA(semester: Semester, scaleKey: keyof typeof SCALES = 'UG') {
-  const scale = SCALES[scaleKey];
+type GradeDef = { points: number; min: number; max: number };
+
+export function scoreToGrade(score: number, scaleKey: string): string {
+  const scale = SCALES[scaleKey as keyof typeof SCALES] || SCALES['UG'];
+  for (const [grade, def] of Object.entries(scale.grades) as [string, GradeDef][]) {
+    if (score >= def.min && score <= def.max) return grade;
+  }
+  return '';
+}
+
+export function calculateSemesterGPA(semester: Semester, scaleKey: string = 'UG') {
+  const scale = SCALES[scaleKey as keyof typeof SCALES] || SCALES['UG'];
   let totalPoints = 0;
   let totalCredits = 0;
 
   for (const course of semester.courses) {
     if (!course.grade) continue;
     
-    const gradeDef = scale.grades[course.grade as keyof typeof scale.grades];
+    const gradeDef = (scale.grades as Record<string, GradeDef>)[course.grade];
     if (gradeDef) {
       totalPoints += gradeDef.points * course.credits;
       totalCredits += course.credits;
@@ -65,16 +84,16 @@ export function calculateSemesterGPA(semester: Semester, scaleKey: keyof typeof 
   return totalPoints / totalCredits;
 }
 
-export function calculateCumulativeGPA(semesters: Semester[], scaleKey: keyof typeof SCALES = 'UG') {
-  const scale = SCALES[scaleKey];
-  let totalPoints = 0;
-  let totalCredits = 0;
+export function calculateCumulativeGPA(semesters: Semester[], scaleKey: string = 'UG', baselineGpa: number = 0, baselineCredits: number = 0) {
+  const scale = SCALES[scaleKey as keyof typeof SCALES] || SCALES['UG'];
+  let totalPoints = baselineGpa * baselineCredits;
+  let totalCredits = baselineCredits;
 
   for (const sem of semesters) {
     for (const course of sem.courses) {
       if (!course.grade) continue;
       
-      const gradeDef = scale.grades[course.grade as keyof typeof scale.grades];
+      const gradeDef = (scale.grades as Record<string, GradeDef>)[course.grade];
       if (gradeDef) {
         totalPoints += gradeDef.points * course.credits;
         totalCredits += course.credits;

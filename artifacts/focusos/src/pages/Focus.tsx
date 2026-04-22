@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, X, Music, Volume2, Target, CheckCircle2 } from 'lucide-react';
+import { Play, Pause, X, Music, Volume2, Target, Settings2, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { audioPlayer } from '@/lib/audio';
 import { toast } from 'sonner';
+import { checkAchievements } from '@/lib/achievements';
+import confetti from 'canvas-confetti';
 
 export default function Focus() {
   const [location, setLocation] = useLocation();
@@ -15,17 +19,41 @@ export default function Focus() {
   const setActiveSession = useStore(state => state.setActiveFocusSessionId);
   const addSession = useStore(state => state.addSession);
   const addXP = useStore(state => state.addXP);
+  const addBlock = useStore(state => state.addBlock);
 
+  const [phase, setPhase] = useState<'config' | 'timer' | 'quality'>('config');
   const [timeLeft, setTimeLeft] = useState(profile.preferences.sessionMin * 60);
   const [isActive, setIsActive] = useState(false);
   const [showMusic, setShowMusic] = useState(false);
   const [volume, setVolume] = useState(50);
-  const [showQuality, setShowQuality] = useState(false);
   const [track, setTrack] = useState<'ambient' | 'lofi' | 'rain' | null>(null);
 
+  const [pomodoro, setPomodoro] = useState({ workMin: profile.preferences.sessionMin, breakMin: profile.preferences.breakMin, cycles: 4 });
+  const [currentCycle, setCurrentCycle] = useState(1);
+  const [isBreak, setIsBreak] = useState(false);
+
   const timerRef = useRef<number | null>(null);
-  const totalTime = profile.preferences.sessionMin * 60;
+  const totalTime = (isBreak ? pomodoro.breakMin : pomodoro.workMin) * 60;
   const progress = ((totalTime - timeLeft) / totalTime) * 100;
+
+  const handleCycleComplete = useCallback(() => {
+    audioPlayer.stop();
+    setIsActive(false);
+    
+    if (isBreak) {
+      setIsBreak(false);
+      setTimeLeft(pomodoro.workMin * 60);
+      if (currentCycle >= pomodoro.cycles) {
+        setPhase('quality');
+      } else {
+        setCurrentCycle(c => c + 1);
+      }
+    } else {
+      setIsBreak(true);
+      setTimeLeft(pomodoro.breakMin * 60);
+      toast.info('Time for a break!');
+    }
+  }, [isBreak, pomodoro, currentCycle]);
 
   useEffect(() => {
     if (isActive && timeLeft > 0) {
@@ -33,28 +61,99 @@ export default function Focus() {
         setTimeLeft(t => t - 1);
       }, 1000);
     } else if (timeLeft === 0 && isActive) {
-      handleComplete();
+      handleCycleComplete();
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, timeLeft]);
+  }, [isActive, timeLeft, handleCycleComplete]);
 
   useEffect(() => {
-    if (!activeSessionId) {
-      setActiveSession(crypto.randomUUID());
-    }
     return () => {
       audioPlayer.stop();
     };
   }, []);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     setIsActive(!isActive);
-    if (!isActive && track) {
+    if (!isActive && track && !isBreak) {
       audioPlayer.resume();
     } else if (isActive) {
       audioPlayer.pause();
+    }
+  }, [isActive, track, isBreak]);
+
+  const submitSession = useCallback((quality: 'done' | 'partial' | 'rescheduled') => {
+    const actualMin = Math.round((pomodoro.workMin * 60 - timeLeft) / 60) + ((currentCycle - 1) * pomodoro.workMin);
+    addSession({
+      startedAt: new Date(Date.now() - actualMin * 60000).toISOString(),
+      endedAt: new Date().toISOString(),
+      plannedMin: pomodoro.workMin * pomodoro.cycles,
+      actualMin: Math.max(1, actualMin),
+      quality
+    });
+    
+    let xpEarned = 0;
+    if (quality === 'done') xpEarned = 10;
+    else if (quality === 'partial') xpEarned = 5;
+    else xpEarned = 1;
+    
+    addXP(xpEarned);
+    
+    if (quality === 'rescheduled') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      addBlock({ title: 'Rescheduled Session', start: tomorrow.toISOString(), end: new Date(tomorrow.getTime() + pomodoro.workMin * 60000).toISOString() });
+    }
+    
+    if (Math.floor(profile.xp / 100) < Math.floor((profile.xp + xpEarned) / 100)) {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ['#0be7a4', '#57a3ff', '#f2ad46'] });
+      toast.success('Level Up!', { icon: '⭐' });
+    } else {
+      toast.success(`Session logged! +${xpEarned} XP`);
+    }
+
+    checkAchievements();
+    setActiveSession(null);
+    setLocation('/');
+  }, [pomodoro, timeLeft, currentCycle, addSession, addXP, addBlock, profile.xp, setActiveSession, setLocation]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (phase === 'timer') {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          handlePlayPause();
+        }
+      } else if (phase === 'quality') {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          submitSession('done');
+        } else if (e.key === 'Enter' && e.shiftKey) {
+          submitSession('partial');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [phase, handlePlayPause, submitSession]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (phase === 'timer' && isActive) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [phase, isActive]);
+
+  const startTimer = () => {
+    setPhase('timer');
+    setTimeLeft(pomodoro.workMin * 60);
+    setIsActive(true);
+    if (!activeSessionId) {
+      setActiveSession(crypto.randomUUID());
     }
   };
 
@@ -65,7 +164,6 @@ export default function Focus() {
     } else {
       setTrack(newTrack);
       audioPlayer.play(newTrack);
-      if (!isActive) setIsActive(true);
     }
   };
 
@@ -75,38 +173,12 @@ export default function Focus() {
     audioPlayer.setVolume(v / 100);
   };
 
-  const handleComplete = () => {
-    setIsActive(false);
-    audioPlayer.stop();
-    setShowQuality(true);
-  };
-
   const handleEndEarly = () => {
     if (confirm('Are you sure you want to end this session early?')) {
-      handleComplete();
+      setIsActive(false);
+      audioPlayer.stop();
+      setPhase('quality');
     }
-  };
-
-  const submitSession = (quality: 'done' | 'partial' | 'rescheduled') => {
-    const actualMin = Math.round((totalTime - timeLeft) / 60);
-    addSession({
-      startedAt: new Date(Date.now() - actualMin * 60000).toISOString(),
-      endedAt: new Date().toISOString(),
-      plannedMin: profile.preferences.sessionMin,
-      actualMin,
-      quality
-    });
-    
-    let xpEarned = 0;
-    if (quality === 'done') xpEarned = 20;
-    else if (quality === 'partial') xpEarned = 10;
-    else xpEarned = 5;
-    
-    addXP(xpEarned);
-    toast.success(`Session logged! +${xpEarned} XP`);
-    
-    setActiveSession(null);
-    setLocation('/');
   };
 
   const formatTime = (seconds: number) => {
@@ -115,7 +187,71 @@ export default function Focus() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  if (showQuality) {
+  if (phase === 'config') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-8 p-4 mt-8">
+        <h1 className="text-3xl font-bold tracking-tight text-center mb-8">Focus Setup</h1>
+        
+        <div className="glass p-6 rounded-3xl space-y-6">
+          <div>
+            <Label className="text-muted-foreground uppercase tracking-wider text-xs font-bold mb-4 block">Presets</Label>
+            <div className="flex flex-wrap gap-3">
+              {[25, 45, 60, 90].map(m => (
+                <Button key={m} variant={pomodoro.workMin === m ? 'default' : 'secondary'} className={`rounded-full ${pomodoro.workMin === m ? 'mint-glow' : ''}`} onClick={() => setPomodoro({ ...pomodoro, workMin: m })}>
+                  {m} min
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-white/5">
+            <Label className="text-muted-foreground uppercase tracking-wider text-xs font-bold mb-2 flex items-center gap-2">
+              <Settings2 className="w-4 h-4" /> Pomodoro Customizer
+            </Label>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Work (min)</Label>
+                <Input type="number" value={pomodoro.workMin} onChange={e => setPomodoro({ ...pomodoro, workMin: parseInt(e.target.value) || 25 })} className="bg-background/50" />
+              </div>
+              <div className="space-y-2">
+                <Label>Break (min)</Label>
+                <Input type="number" value={pomodoro.breakMin} onChange={e => setPomodoro({ ...pomodoro, breakMin: parseInt(e.target.value) || 5 })} className="bg-background/50" />
+              </div>
+              <div className="space-y-2">
+                <Label>Cycles</Label>
+                <Input type="number" value={pomodoro.cycles} onChange={e => setPomodoro({ ...pomodoro, cycles: parseInt(e.target.value) || 1 })} className="bg-background/50" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-white/5">
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-muted-foreground uppercase tracking-wider text-xs font-bold flex items-center gap-2">
+                <Music className="w-4 h-4" /> Focus Audio
+              </Label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant={track === 'lofi' ? 'default' : 'secondary'} className={`rounded-full ${track === 'lofi' ? 'mint-glow' : ''}`} onClick={() => handleTrackChange('lofi')}>Lo-Fi</Button>
+              <Button size="sm" variant={track === 'ambient' ? 'default' : 'secondary'} className={`rounded-full ${track === 'ambient' ? 'mint-glow' : ''}`} onClick={() => handleTrackChange('ambient')}>Ambient</Button>
+              <Button size="sm" variant={track === 'rain' ? 'default' : 'secondary'} className={`rounded-full ${track === 'rain' ? 'mint-glow' : ''}`} onClick={() => handleTrackChange('rain')}>Rain</Button>
+            </div>
+            {track && (
+              <div className="flex items-center gap-4 mt-2">
+                <Volume2 className="w-4 h-4 text-muted-foreground" />
+                <Slider value={[volume]} min={0} max={100} step={1} onValueChange={handleVolumeChange} className="flex-1" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <Button size="lg" className="w-full h-16 text-xl rounded-2xl mint-glow" onClick={startTimer}>
+          Start Focus
+        </Button>
+      </div>
+    );
+  }
+
+  if (phase === 'quality') {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background p-4 text-center">
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-sm w-full space-y-6">
@@ -124,14 +260,14 @@ export default function Focus() {
           <p className="text-muted-foreground">How was your focus?</p>
           
           <div className="flex flex-col gap-3 mt-8">
-            <Button size="lg" className="w-full text-lg mint-glow" onClick={() => submitSession('done')}>
-              Deep Focus (Done) <span className="text-primary-foreground/70 ml-auto">+20 XP</span>
+            <Button size="lg" className="w-full text-lg mint-glow h-14" onClick={() => submitSession('done')}>
+              Focused (Done) <span className="text-primary-foreground/70 ml-auto">+10 XP</span>
             </Button>
-            <Button size="lg" variant="secondary" className="w-full text-lg" onClick={() => submitSession('partial')}>
-              Distracted (Partial) <span className="text-foreground/50 ml-auto">+10 XP</span>
+            <Button size="lg" variant="secondary" className="w-full text-lg h-14" onClick={() => submitSession('partial')}>
+              Okay (Partial) <span className="text-foreground/50 ml-auto">+5 XP</span>
             </Button>
-            <Button size="lg" variant="outline" className="w-full text-lg border-white/10" onClick={() => submitSession('rescheduled')}>
-              Interrupted (Reschedule) <span className="text-foreground/50 ml-auto">+5 XP</span>
+            <Button size="lg" variant="outline" className="w-full text-lg border-white/10 h-14" onClick={() => submitSession('rescheduled')}>
+              Distracted (Reschedule) <span className="text-foreground/50 ml-auto">+1 XP</span>
             </Button>
           </div>
         </motion.div>
@@ -140,12 +276,11 @@ export default function Focus() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background overflow-hidden">
-      {/* Background ambient glow based on progress */}
+    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden transition-colors duration-1000 ${isBreak ? 'bg-[#0a1835]' : 'bg-background'}`}>
       <div 
         className="absolute inset-0 opacity-10 transition-opacity duration-1000 pointer-events-none"
         style={{ 
-          background: `radial-gradient(circle at center, var(--color-primary) 0%, transparent ${Math.max(30, progress)}%)` 
+          background: `radial-gradient(circle at center, ${isBreak ? 'var(--color-info)' : 'var(--color-primary)'} 0%, transparent ${Math.max(30, progress)}%)` 
         }}
       />
 
@@ -153,8 +288,8 @@ export default function Focus() {
         <Button variant="ghost" size="icon" onClick={handleEndEarly} className="rounded-full text-muted-foreground hover:bg-destructive/20 hover:text-destructive">
           <X className="w-6 h-6" />
         </Button>
-        <div className="glass px-4 py-1.5 rounded-full text-sm font-medium tracking-widest uppercase">
-          FOCUS MODE
+        <div className={`glass px-4 py-1.5 rounded-full text-sm font-medium tracking-widest uppercase border ${isBreak ? 'text-info border-info/30' : 'text-primary border-primary/30'}`}>
+          {isBreak ? 'BREAK' : 'FOCUS'} • {currentCycle}/{pomodoro.cycles}
         </div>
         <Button variant="ghost" size="icon" onClick={() => setShowMusic(!showMusic)} className={`rounded-full transition-colors ${showMusic || track ? 'text-primary mint-glow bg-primary/10' : 'text-muted-foreground'}`}>
           <Music className="w-6 h-6" />
@@ -162,13 +297,12 @@ export default function Focus() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        {/* Timer Ring */}
         <div className="relative w-72 h-72 sm:w-96 sm:h-96 mb-12">
           <svg className="w-full h-full transform -rotate-90">
             <circle cx="50%" cy="50%" r="48%" className="stroke-secondary fill-none" strokeWidth="8" />
             <circle 
               cx="50%" cy="50%" r="48%" 
-              className="stroke-primary fill-none transition-all duration-1000 ease-linear drop-shadow-[0_0_15px_rgba(11,231,164,0.5)]" 
+              className={`fill-none transition-all duration-1000 ease-linear ${isBreak ? 'stroke-info drop-shadow-[0_0_15px_rgba(87,163,255,0.5)]' : 'stroke-primary drop-shadow-[0_0_15px_rgba(11,231,164,0.5)]'}`} 
               strokeWidth="8" 
               strokeLinecap="round"
               strokeDasharray="300%"
@@ -182,16 +316,21 @@ export default function Focus() {
           </div>
         </div>
 
-        <Button 
-          size="lg" 
-          className={`h-20 w-20 rounded-full ${isActive ? 'bg-secondary hover:bg-secondary/80 text-foreground' : 'bg-primary hover:bg-primary/90 text-primary-foreground mint-glow shadow-lg shadow-primary/30'} transition-all duration-300 transform hover:scale-105 active:scale-95`}
-          onClick={handlePlayPause}
-        >
-          {isActive ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
-        </Button>
+        <div className="flex gap-4">
+          <Button 
+            size="lg" 
+            className={`h-20 w-20 rounded-full ${isActive ? 'bg-secondary hover:bg-secondary/80 text-foreground' : `${isBreak ? 'bg-info shadow-info/30' : 'bg-primary mint-glow shadow-primary/30'} text-primary-foreground shadow-lg`} transition-all duration-300 transform hover:scale-105 active:scale-95`}
+            onClick={handlePlayPause}
+          >
+            {isActive ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
+          </Button>
+          
+          <Button size="icon" variant="ghost" className="h-20 w-20 rounded-full bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground" onClick={handleCycleComplete}>
+            <SkipForward className="w-6 h-6" />
+          </Button>
+        </div>
       </div>
 
-      {/* Music Panel */}
       <AnimatePresence>
         {showMusic && (
           <motion.div 
@@ -206,13 +345,16 @@ export default function Focus() {
               <Button variant={track === 'ambient' ? 'default' : 'secondary'} className={track === 'ambient' ? 'mint-glow' : ''} onClick={() => handleTrackChange('ambient')}>Ambient</Button>
               <Button variant={track === 'rain' ? 'default' : 'secondary'} className={track === 'rain' ? 'mint-glow' : ''} onClick={() => handleTrackChange('rain')}>Rain</Button>
             </div>
-            <div className="flex items-center gap-4">
-              <Volume2 className="w-5 h-5 text-muted-foreground" />
-              <Slider value={[volume]} min={0} max={100} step={1} onValueChange={handleVolumeChange} className="flex-1" />
-            </div>
+            {track && (
+              <div className="flex items-center gap-4">
+                <Volume2 className="w-5 h-5 text-muted-foreground" />
+                <Slider value={[volume]} min={0} max={100} step={1} onValueChange={handleVolumeChange} className="flex-1" />
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 }
+

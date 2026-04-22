@@ -2,6 +2,9 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+import { requestPermission, scheduleAll } from "@/lib/notifications";
+import { useStore } from "@/lib/store";
 
 import { AppShell } from "@/components/layout/AppShell";
 import Home from "@/pages/Home";
@@ -34,6 +37,37 @@ function Router() {
 }
 
 function App() {
+  const store = useStore();
+
+  useEffect(() => {
+    requestPermission();
+  }, []);
+
+  useEffect(() => {
+    scheduleAll();
+  }, [store.tasks, store.events, store.profile.preferences.notifications]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (store.profile.preferences.theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    
+    if (store.profile.preferences.highContrast) {
+      root.classList.add('hc');
+    } else {
+      root.classList.remove('hc');
+    }
+    
+    if (store.profile.preferences.fontSize === 'large') {
+      root.classList.add('text-lg-mode');
+    } else {
+      root.classList.remove('text-lg-mode');
+    }
+  }, [store.profile.preferences.theme, store.profile.preferences.highContrast, store.profile.preferences.fontSize]);
+
   return (
     <TooltipProvider>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>

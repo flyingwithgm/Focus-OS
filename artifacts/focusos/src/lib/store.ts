@@ -64,6 +64,7 @@ const defaultProfile: Profile = {
     sessionMin: 25,
     breakMin: 5,
     dailyGoalMin: 120,
+    weeklyTargetHours: 15,
     notifications: { tasks: true, exams: true, classes: true, streak: true },
     theme: 'dark',
     fontSize: 'normal',

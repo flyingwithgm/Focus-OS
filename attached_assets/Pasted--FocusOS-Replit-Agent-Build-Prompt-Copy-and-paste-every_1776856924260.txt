@@ -1,0 +1,635 @@
+# FocusOS — Replit Agent Build Prompt
+> Copy and paste everything below this line into Replit Agent
+
+---
+
+## OVERVIEW
+
+Build **FocusOS** — a complete, elite-level, mobile-first **Progressive Web App (PWA)** for students. FocusOS is a Student Operating System that turns academic pressure into guided momentum. This must be production-grade, visually stunning, and fully functional with zero dead code.
+
+**App tagline:** *"Set your baseline once. FocusOS handles the rest."*
+
+---
+
+## STACK (EXACT — DO NOT SUBSTITUTE)
+
+| Layer | Technology |
+|---|---|
+| UI Framework | React 18 |
+| Styling | Tailwind CSS v3 |
+| Animations | Framer Motion |
+| Build Tool | Vite |
+| Backend | Firebase (Firestore + Firebase Auth) |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Audio | Howler.js |
+| PWA | vite-plugin-pwa |
+| Routing | React Router v6 |
+
+Install command:
+```
+npm create vite@latest focusos -- --template react
+npm install tailwindcss framer-motion firebase recharts lucide-react howler react-router-dom vite-plugin-pwa
+```
+
+---
+
+## FOLDER STRUCTURE
+
+```
+src/
+├── components/
+│   ├── ui/               # Shared UI: Button, Card, Modal, Toast, Badge, Input, Select, Toggle
+│   ├── layout/           # AppShell, BottomNav, Sidebar, FAB, PageTransition
+│   ├── home/             # FocusCockpit, WidgetCard, XPBar, SignalCenter, ExamMode
+│   ├── plan/             # TaskList, TaskCard, TaskForm, TaskFilters
+│   ├── calendar/         # CalendarView, TimetableGrid, EventCard, AttendanceTracker
+│   ├── schedule/         # TimeBlockList, TimeBlockCard, TimeBlockForm, ConflictAlert
+│   ├── analytics/        # MetricCard, FocusTrendChart, TaskPriorityChart, GPAChart
+│   ├── smarthub/         # InsightCard, MoodCheckIn, BurnoutAlert, WeeklyComparison
+│   ├── gpa/              # GPACalculator, SemesterBlock, WhatIfSimulator, GradePredictor
+│   ├── focus/            # FocusTimer, CircularRing, PomodoroCustomizer, QualitySelector
+│   ├── music/            # MusicPlayer, TrackSelector, VolumeControl
+│   ├── auth/             # AuthSelector, GoogleSignIn, GuestMode
+│   ├── onboarding/       # OnboardingShell, StepIdentity, StepRhythm, StepVisual, StepAlerts
+│   ├── settings/         # ProfileSettings, StudyPrefs, DisplaySettings, CourseManager, NotificationSettings
+│   └── achievements/     # AchievementBadge, XPLevelUp, StreakDisplay
+├── hooks/                # useAuth, useFirestore, useFocusSession, useTheme, useNotifications, useHaptic
+├── context/              # AuthContext, ThemeContext, AppStateContext
+├── lib/
+│   ├── firebase.js       # Firebase init
+│   ├── firestore.js      # All Firestore CRUD operations
+│   ├── calculations.js   # GPA, XP, streak, risk score logic
+│   └── audio.js          # Howler.js setup
+├── pages/
+│   ├── Home.jsx
+│   ├── Plan.jsx
+│   ├── Calendar.jsx
+│   ├── Schedule.jsx
+│   ├── Analytics.jsx
+│   ├── SmartHub.jsx
+│   ├── GPA.jsx
+│   ├── Settings.jsx
+│   └── FocusSession.jsx
+├── App.jsx               # Router + context providers
+├── main.jsx
+└── index.css             # Tailwind directives + CSS variables
+```
+
+---
+
+## DESIGN SYSTEM
+
+### CSS Variables (add to index.css)
+
+```css
+:root {
+  /* Dark mode default */
+  --bg: #060915;
+  --bg-soft: #0d1328;
+  --panel: rgba(17, 26, 53, 0.78);
+  --text: #edf3ff;
+  --text-muted: #93a4cb;
+  --line: rgba(121, 145, 209, 0.24);
+  --brand: #0be7a4;
+  --brand-soft: rgba(11, 231, 164, 0.18);
+  --warning: #f2ad46;
+  --danger: #ff617a;
+  --info: #57a3ff;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --transition-fast: 130ms ease;
+  --transition-base: 220ms ease;
+  --transition-slow: 320ms ease;
+}
+
+[data-theme="light"] {
+  --bg: #e7ebf8;
+  --bg-soft: #f0f3fc;
+  --panel: rgba(255, 255, 255, 0.72);
+  --text: #141b35;
+  --text-muted: #4a5880;
+  --brand: #07b67f;
+  --brand-soft: rgba(7, 182, 127, 0.15);
+  --line: rgba(74, 88, 128, 0.2);
+}
+```
+
+### Tailwind Config
+
+Extend Tailwind with all CSS variables as custom colors. Map `brand`, `bg`, `panel`, `text-muted`, `warning`, `danger`, `info` to CSS variables.
+
+### Design Rules (ENFORCE STRICTLY)
+
+- **Glass morphism**: All cards/panels use `backdrop-filter: blur(16px)` + semi-transparent background
+- **Border radius**: 12–28px on all surfaces, never sharp corners
+- **Mint glow**: Active nav items, focused inputs, primary buttons have `box-shadow: 0 0 20px rgba(11, 231, 164, 0.3)`
+- **Typography**: Use `Plus Jakarta Sans` (import from Google Fonts) — bold for headings, regular for body
+- **Spacing**: Generous — minimum 16px padding on mobile cards
+- **Dark mode**: Default. Light mode toggled via `data-theme="light"` on `<html>`
+- **Every interactive element**: Has `hover:` state + `active:scale-95` with 200ms transition
+- **No solid white backgrounds** — always use CSS variable surfaces
+
+---
+
+## ANIMATIONS (FRAMER MOTION SPECS)
+
+### Page Transitions
+```jsx
+const pageVariants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0, transition: { duration: 0.3, ease: "easeOut" } },
+  exit: { opacity: 0, x: -20, transition: { duration: 0.2 } }
+}
+```
+Wrap every page in `<AnimatePresence>` + `<motion.div variants={pageVariants}>`.
+
+### Card Reveals (staggered list)
+```jsx
+const containerVariants = {
+  animate: { transition: { staggerChildren: 0.07 } }
+}
+const cardVariants = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.35 } }
+}
+```
+
+### Modal Entrance
+```jsx
+{ initial: { opacity: 0, scale: 0.92 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 0.95 } }
+```
+
+### FAB
+```jsx
+{ whileHover: { scale: 1.08 }, whileTap: { scale: 0.94 } }
+```
+
+### XP Bar fill: `animate={{ width: `${percent}%` }}` with spring transition.
+
+### Circular Focus Ring: SVG `stroke-dashoffset` animated with Framer Motion.
+
+### Level Up Modal: Scale + confetti burst using `canvas-confetti`.
+
+---
+
+## CINEMATIC LAUNCH & ONBOARDING
+
+### App Launch Screen (shown for 2.5s on first load)
+- Full screen `--bg` background
+- Center: FocusOS logo SVG animates `scale: 0.8 → 1.0` + `opacity: 0 → 1` with spring (stiffness: 120, damping: 14)
+- Below logo: tagline *"Student Operating System"* fades in after 400ms delay
+- Bottom: mint progress bar animates `width: 0 → 100%` over 2s
+- After 2.5s: transitions to onboarding (first launch) or Home (returning user)
+
+### 4-Step Onboarding
+Each step uses `AnimatePresence` with slide-in from right (`x: 60 → 0`) and slide-out to left (`x: 0 → -60`).
+
+**Step 1 — Identity**
+- Input: Full name
+- Dropdown: University (University of Ghana, KNUST, US/Canada, UK, Other)
+- Input: Year of study
+
+**Step 2 — Rhythm**
+- Slider: Weekly study target (5–40 hrs)
+- Slider: Default session length (25/45/60/90 min)
+- Slider: Break length (5/10/15/20 min)
+
+**Step 3 — Visual Mode**
+- Two large cards: Dark Mode / Light Mode
+- Live preview updates immediately on selection
+- Animated checkmark on selected card
+
+**Step 4 — Alerts**
+- Toggle: Enable browser notifications
+- Toggle: Streak reminders
+- Toggle: Exam countdowns
+- Button: Load sample data (triggers confetti via `canvas-confetti`)
+
+Progress dots at bottom. "Next" button is mint with glow. "Back" is ghost.
+
+---
+
+## NAVIGATION
+
+### Mobile (≤768px)
+- Fixed bottom nav bar: Home, Plan, Calendar, Schedule, Analytics
+- Each tab: Lucide icon + label, active state = mint color + mint underline glow
+- Center FAB: `+` button, mint, glowing, opens quick-add modal (task or event)
+- Height: 64px, glass background, border-top: 1px solid `--line`
+
+### Desktop (≥768px)
+- Left sidebar: 240px wide, fixed
+- FocusOS logo at top
+- Nav items with icons + labels
+- Bottom: user avatar + settings link
+- Main content: `ml-[240px]`
+
+### Routing (React Router v6)
+```
+/ → Home
+/plan → Plan
+/calendar → Calendar
+/schedule → Schedule
+/analytics → Analytics
+/smarthub → Smart Hub
+/gpa → GPA Calculator
+/focus → Focus Session (full screen, hides nav)
+/settings → Settings
+```
+
+---
+
+## FEATURES — DETAILED SPEC
+
+### 1. HOME (Focus Cockpit)
+
+**Greeting**: "Good morning, [name] 👋" — text based on time of day. Animates in on mount.
+
+**Widget Cards** (swipeable row on mobile, 2×2 grid on desktop):
+- Today's Tasks: count + top 3 task titles
+- Focus Stats: today's study time + weekly streak flame
+- Upcoming Exams: next exam name + countdown days
+- GPA Snapshot: current GPA + target GPA progress bar
+
+Each widget: glass card, mint accent border-left, tap to navigate to relevant section.
+Swipe implemented with Framer Motion `drag="x"` and `dragConstraints`.
+
+**XP Bar**: Current level badge + progress bar filling to next level. Animated fill on load.
+
+**Start Focus Session Button**: Full-width, mint background, glowing, large text. Opens Focus Session page.
+
+**Signal Center**: Scrollable list of alerts:
+- Overdue tasks (danger red)
+- Deadlines within 3 days (warning orange)
+- Attendance risk (info blue)
+- Streak at risk (warning orange)
+Each alert is a dismissible card with icon + message + action button.
+
+**Exam Mode**: Auto-activates when exam ≤48hrs away. Changes home header to deep red tint + "EXAM MODE" badge.
+
+---
+
+### 2. PLAN (Task Management)
+
+**Task Form** (slide-up modal):
+- Title (text input)
+- Priority: High / Medium / Low (segmented control, color coded)
+- Estimate: minutes (number input)
+- Due date (date picker)
+- Course link (dropdown from saved courses)
+
+**Task List**: Staggered card animation on load.
+
+**Task Card**:
+- Title + priority badge + due date + course tag
+- Swipe left on mobile → delete (red background reveals)
+- Swipe right on mobile → complete (green background reveals)
+- Long press → context menu (Start Focus, Schedule, Edit, Delete)
+- Tap → expand details
+
+**Filters**: Pills row — All, High, Medium, Low, Overdue. Animated filter transition.
+
+**Undo Toast**: 5-second countdown toast on delete/complete with undo button.
+
+**Empty State**: Illustrated empty state with mint icon and encouraging message.
+
+---
+
+### 3. CALENDAR (Events & Timetable)
+
+**View Toggle**: Month / Week — animated transition between views.
+
+**Event Types**:
+- Exam → danger red badge
+- Deadline → warning orange badge
+- Class → info blue badge
+
+**Event Form**: Title, type, date, time, course link.
+
+**Weekly Timetable Grid**:
+- 7 columns (Mon–Sun) × time rows (7am–10pm)
+- Color-coded course blocks
+- Tap block → attendance modal (Attended / Missed)
+- Missed → auto-creates recovery task in Plan
+- >25% missed in a course → attendance warning alert
+
+**Gap Suggestions**: Gaps ≥90min in timetable → suggest study block button appears.
+
+**Prep Tasks**: Exams within 7 days → "Generate prep tasks" button auto-creates linked tasks.
+
+---
+
+### 4. SCHEDULE (Time Blocking)
+
+**Time Block Form**:
+- Link to task (dropdown)
+- Date + start time
+- Duration (auto-calculates end time)
+- Conflict detection: shows warning if overlapping block exists, blocks submission
+
+**Block Card**: Time range + linked task title + course tag.
+Actions: Start Focus Session, Mark Complete, Delete.
+
+**Day View**: Timeline visualization of today's blocks.
+**List View**: Upcoming blocks sorted chronologically.
+
+---
+
+### 5. ANALYTICS (Progress Dashboard)
+
+**Metric Cards** (animated count-up on load):
+- Completion Rate (%)
+- Adherence Rate (%)
+- Risk Score (0–100, color coded: green/orange/red)
+- 7-day Focus Hours
+
+**Charts (Recharts)**:
+- Tasks by Priority: Donut chart (High=danger, Medium=warning, Low=info)
+- Weekly Focus Trend: Area chart, mint fill, 7 days
+- GPA Trajectory: Line chart by semester
+
+**Progress Bars**: Animated fill via Framer Motion on page enter.
+
+**Context Warnings**: If completion rate <50% or risk score >70, show contextual warning card.
+
+---
+
+### 6. SMART HUB
+
+**Insight Cards**: Context-aware tips based on current state (overdue count, streak, GPA trend). Each card: icon + title + description + optional action button.
+
+**Burnout Detection**: If weekly focus >600min or sessions >8/week → burnout warning card with rest suggestions.
+
+**Mood Check-In**: Daily emoji selector (😴😐🙂😊🔥). Logged with timestamp to Firestore.
+
+**Weekly Comparison**: This week vs last week — tasks done, focus hours, sessions. Delta shown with up/down arrows.
+
+**Automatable Actions**:
+- Rescue Overdue: Creates recovery blocks for all overdue tasks
+- Streak Guard: Schedules a 25min session for today
+- Auto-Plan: Generates study schedule for upcoming week
+Each action: button card with description + confirm button.
+
+---
+
+### 7. GPA CALCULATOR
+
+**Grading Scales**:
+- University of Ghana (UG): A=80-100 (4.0), B+=75-79 (3.5), B=70-74 (3.0), C+=65-69 (2.5), C=60-64 (2.0), D+=55-59 (1.5), D=50-54 (1.0), F=0-49 (0)
+- KNUST: Mark-based percentage system
+- US/Canada 4.0: A=93-100, A-=90-92, B+=87-89, B=83-86, B-=80-82, C+=77-79, C=73-76...
+- UK: First=70+, Upper Second=60-69, Lower Second=50-59, Third=40-49
+- Custom: User-defined ranges
+
+**Semester Manager**: Add/remove semesters. Each semester: name + list of courses.
+
+**Course Entry**: Name + credit hours + grade (letter or raw score input, auto-converts).
+
+**Calculations**:
+- Weighted GPA = Σ(credits × points) / Σ(credits)
+- Cumulative GPA across all semesters
+- Baseline: input prior GPA + credits for transfer students
+
+**What-If Simulator**: Toggle to hypothetical mode. Adjust grades with sliders. GPA updates in real time with animated number.
+
+**Target Tracker**: Set target GPA. Shows required average for remaining credits. Color coded: achievable (mint) / stretch (warning) / unlikely (danger).
+
+**Grade Predictor** (math-based, no AI):
+- Inputs: current GPA trend (slope from last 3 semesters) + weekly study hours
+- Formula: predicted_gpa = current_gpa + (trend_slope × 0.5) + (study_hours_delta × 0.02)
+- Displayed as a projected range with confidence label
+
+**GPA Trend Chart**: Recharts line chart showing GPA per semester.
+
+---
+
+### 8. FOCUS SESSION (Full Screen Page)
+
+**Launch**: From task card, time block, or Home button. Passes task/block context.
+
+**Configuration Screen**:
+- Task linked (shown if launched from task)
+- Duration selector: 25 / 45 / 60 / 90 min + custom input
+- Pomodoro Customizer: work minutes / break minutes / cycles (all editable)
+- Music: toggle on/off + track selector
+
+**Timer Screen** (full screen, hides nav):
+- Large circular SVG progress ring — animated `stroke-dashoffset` countdown
+- Mint ring color, glowing
+- Time remaining in center (large bold text)
+- Task name below timer
+- Pause/Resume button
+- Music player bar at bottom (collapsible)
+- Keyboard shortcuts: Space = pause/resume, Ctrl+Enter = done, Shift+Enter = partial
+
+**Pomodoro mode**: Alternates work/break cycles. Break screen shows different color (soft blue).
+
+**Session End**:
+- Quality selector: Focused (+10 XP) / Okay (+5 XP) / Distracted (+1 XP)
+- Done: marks linked task complete
+- Partial: saves progress
+- Reschedule: creates new block tomorrow
+- XP awarded + animated XP gain notification
+
+**Persistence**: Save active session to localStorage. Restore on reload with confirmation modal.
+
+**beforeunload**: Warning if session is active and user tries to close tab.
+
+---
+
+### 9. STUDY MUSIC PLAYER
+
+**Tracks** (use royalty-free URLs or placeholder audio):
+- Lo-fi Hip Hop
+- Ambient Space
+- Rain Sounds
+- White Noise
+- Deep Focus Binaural
+
+**Howler.js setup**: Loop each track. Fade in/out on play/pause (500ms).
+
+**UI** (minimal bar at bottom of focus screen):
+- Track name + play/pause button + volume slider
+- Track selector: horizontal scrollable pill list
+- Collapses to just play button when timer is fullscreen
+
+---
+
+### 10. NOTIFICATIONS
+
+**Browser Push** (request permission in onboarding Step 4):
+- Task due reminder: 1 hour before due date
+- Exam countdown: 24 hours before + 1 hour before
+- Class reminder: 15 minutes before
+- Streak at risk: if no session by 8pm
+
+**Implementation**: Use `setTimeout` for in-session reminders + `Notification` API.
+
+**Settings**: Toggle per notification type in Settings > Notifications.
+
+**In-app Bell**: Lucide `Bell` icon in header. Badge count of unread alerts. Dropdown list of recent notifications.
+
+---
+
+### 11. XP & ACHIEVEMENT SYSTEM
+
+**XP Sources**:
+- Focus session done: +10 XP
+- Focus session partial: +5 XP
+- Focus session attempted: +1 XP
+- Task completed: +5 XP
+- Daily streak maintained: +3 XP
+
+**Level System**: Every 100 XP = level up. Level-up triggers full-screen modal: level number animates in + confetti burst + badge if unlocked.
+
+**10 Achievement Badges**:
+1. First Session — complete first focus session
+2. Week Warrior — 7-day streak
+3. Ten Hours — 10 total focus hours
+4. Task Master — 50 tasks completed
+5. GPA Guardian — set a GPA target
+6. Night Owl — session after 10pm
+7. Early Bird — session before 7am
+8. Perfect Week — hit weekly target 4 weeks in a row
+9. Comeback Kid — restore a streak after breaking it
+10. Scholar — reach GPA 3.5+
+
+Each badge: locked (grayscale) → unlocked (color + glow animation + toast notification).
+
+**Streak**: Consecutive days with ≥1 completed focus session. Flame icon. Resets at midnight if no session.
+
+---
+
+### 12. AUTH SYSTEM
+
+**Auth Selection Screen** (shown before onboarding on first launch):
+- Three large cards:
+  - Google Sign In (cloud sync, recommended badge)
+  - Guest Mode (anonymous Firebase auth, upgradeable)
+  - Local Only (no auth, localStorage only)
+
+**Google Auth**: Firebase `signInWithPopup` with `GoogleAuthProvider`.
+
+**Guest → Google Upgrade**: Button in Settings > Account. Uses `linkWithPopup` to preserve data.
+
+**State**: `AuthContext` provides `user`, `authMode`, `signIn`, `signOut`, `upgrade`.
+
+---
+
+### 13. DATA MODEL (FIRESTORE)
+
+```
+users/{uid}/
+  profile: { name, university, year, weeklyTarget, sessionLength, breakLength, theme, xp, level, streak, lastSessionDate, notifications:{} }
+
+  tasks/{taskId}: { title, priority, estimateMinutes, dueDate, courseId, completed, createdAt, completedAt }
+
+  events/{eventId}: { title, type, date, time, courseId, createdAt }
+
+  blocks/{blockId}: { taskId, date, startTime, endTime, completed, createdAt }
+
+  sessions/{sessionId}: { taskId, blockId, duration, actualDuration, quality, xpEarned, pauseCount, startedAt, endedAt }
+
+  courses/{courseId}: { name, creditHours, color, weeklyMeetings, gradeScale }
+
+  classSessions/{classId}: { courseId, date, time, attended, recoveryTaskId }
+
+  moodLogs/{logId}: { mood, emoji, timestamp }
+
+  gpaData/{semesterId}: { name, courses:[{name, credits, grade, score}], gpa, target, baselineGpa, baselineCredits }
+```
+
+---
+
+### 14. OFFLINE & PWA
+
+**vite-plugin-pwa config**:
+- `registerType: 'autoUpdate'`
+- Cache all assets + Firestore reads
+- Manifest: name=FocusOS, short_name=FocusOS, theme_color=#060915, background_color=#060915, display=standalone
+- Icons: 192×192 and 512×512 (mint orbit ring + F monogram on navy background)
+
+**Offline behavior**: App fully functional offline using localStorage. Queues Firestore writes and syncs on reconnect using `onSnapshot` listeners.
+
+---
+
+### 15. ADDITIONAL UX
+
+**Command Palette (Cmd+K)**:
+- Modal with search input
+- Searches across tasks, events, courses, sessions
+- Quick actions: New Task, Start Focus, Open GPA, Go to Settings
+- Keyboard navigation: arrow keys + enter
+
+**Haptic Feedback**: `navigator.vibrate(10)` on button taps, `navigator.vibrate([10,50,10])` on task complete.
+
+**Demo Tour**: 7-step tooltip walkthrough using a custom tour component. Steps: Home, Start Session, Add Task, Calendar, Schedule, Analytics, GPA.
+
+**Sample Data Loader**: Button in onboarding + settings. Populates all collections with realistic example data. Triggers `canvas-confetti` on completion.
+
+**Undo System**: Custom `useUndo` hook. Deleted/completed items held in memory for 5 seconds. Toast shows countdown + undo button. If undo clicked, restores item to Firestore + state.
+
+**Accessibility**:
+- `focus-visible` ring on all interactive elements
+- High contrast mode: increases contrast ratios
+- Larger text mode: scales base font up 20%
+- All modals trap focus
+- ARIA labels on icon-only buttons
+
+**Dark/Light Toggle**: Instant switch. Stored in `localStorage` + Firestore profile. Smooth CSS transition on all color variables (300ms).
+
+---
+
+## ENVIRONMENT VARIABLES
+
+Create `.env` file:
+```
+VITE_FIREBASE_API_KEY=your_key
+VITE_FIREBASE_AUTH_DOMAIN=your_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
+---
+
+## CODE QUALITY RULES
+
+- **Zero dead code**: Every component must be rendered somewhere. Every function must be called.
+- **Component size**: Max 200 lines per component. Split if larger.
+- **All animations**: Via Framer Motion only. No CSS `@keyframes` for interactive animations.
+- **Styling**: Tailwind utility classes only. No inline styles except Framer Motion `animate` props.
+- **Mobile-first**: All Tailwind classes base = mobile. `md:` for tablet. `lg:` for desktop.
+- **State**: React Context for global state (auth, theme, app data). Local `useState` for UI state only.
+- **Firestore**: All reads/writes in `lib/firestore.js`. No direct Firestore calls in components.
+- **Error handling**: Every async operation wrapped in try/catch. User-facing error toasts on failure.
+- **Loading states**: Every data fetch shows a skeleton loader, not a spinner.
+
+---
+
+## FINAL CHECKLIST (verify before considering build complete)
+
+- [ ] Cinematic launch screen animates correctly
+- [ ] All 4 onboarding steps work and save to Firestore
+- [ ] Bottom nav navigates between all pages
+- [ ] Page transitions animate smoothly
+- [ ] Tasks can be created, completed, deleted with undo
+- [ ] Calendar shows timetable with attendance tracking
+- [ ] Time blocks with conflict detection work
+- [ ] Focus session timer counts down with circular ring
+- [ ] Pomodoro customizer works
+- [ ] Music player plays/pauses during session
+- [ ] GPA calculator computes correctly for all 5 scales
+- [ ] What-if simulator updates GPA in real time
+- [ ] XP awarded after session end
+- [ ] Achievement badges unlock correctly
+- [ ] Google auth + guest mode both work
+- [ ] Data persists after page reload
+- [ ] App works offline
+- [ ] Dark/light mode toggle works from anywhere
+- [ ] Command palette (Cmd+K) opens and searches
+- [ ] PWA installable on mobile

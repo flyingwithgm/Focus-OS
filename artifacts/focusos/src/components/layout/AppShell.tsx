@@ -6,6 +6,8 @@ import { Header } from './Header';
 import { useStore } from '@/lib/store';
 import { LaunchScreen } from './LaunchScreen';
 import { Onboarding } from './Onboarding';
+import { CommandPalette } from './CommandPalette';
+import { DemoTour } from './DemoTour';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -27,17 +29,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <Onboarding />;
   }
 
-  // If in focus session, take over screen unless we are literally on the /focus page 
-  // (which handles its own display)
-  if (activeFocusSessionId && location !== '/focus') {
-    // Actually we'll let /focus handle the full screen takeover, so we should just redirect there
-    // but typically it's handled by a global provider or just the user stays on /focus
-  }
-
   const isFocusScreen = location === '/focus';
 
   return (
     <div className="min-h-[100dvh] w-full flex flex-col md:flex-row bg-background text-foreground transition-colors duration-300">
+      <CommandPalette />
+      <DemoTour />
       {!isFocusScreen && <Sidebar className="hidden md:flex" />}
       
       <div className="flex-1 flex flex-col min-w-0">
@@ -52,3 +49,4 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

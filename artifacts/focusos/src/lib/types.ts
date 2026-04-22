@@ -9,6 +9,7 @@ export interface Profile {
     sessionMin: number;
     breakMin: number;
     dailyGoalMin: number;
+    weeklyTargetHours: number;
     notifications: {
       tasks: boolean;
       exams: boolean;
@@ -22,7 +23,7 @@ export interface Profile {
   xp: number;
   level: number;
   streak: { count: number; lastDate: string };
-  badges: string[];
+  badges: { id: string; unlockedAt: string }[];
   onboardingDone: boolean;
   demoTourDone: boolean;
 }
@@ -97,3 +98,4 @@ export interface Notification {
   scheduledFor: string;
   read: boolean;
 }
+
