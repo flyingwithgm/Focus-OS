@@ -1,0 +1,275 @@
+Aight here it is:
+
+---
+
+**FOCUSOS — FULL REPLIT BUILD PROMPT**
+
+---
+
+Build a complete, elite-level mobile-first student productivity web app called **FocusOS** — a Student Operating System. This is a high-quality, production-grade PWA built with React, Tailwind CSS, Framer Motion, Vite, and Firebase.
+
+---
+
+## STACK
+- **Frontend**: React + Tailwind CSS + Framer Motion
+- **Build Tool**: Vite
+- **Backend**: Firebase (Firestore + Firebase Auth)
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **Audio**: Howler.js (for study music player)
+- **PWA**: Vite PWA plugin (full offline support)
+
+---
+
+## BRAND & DESIGN SYSTEM
+
+### Colors
+```
+Dark Mode (default):
+--bg: #060915
+--bg-soft: #0d1328
+--panel: rgba(17, 26, 53, 0.78)
+--text: #edf3ff
+--text-muted: #93a4cb
+--line: rgba(121, 145, 209, 0.24)
+--brand: #0be7a4
+--brand-soft: rgba(11, 231, 164, 0.18)
+--warning: #f2ad46
+--danger: #ff617a
+--info: #57a3ff
+
+Light Mode:
+--bg: #e7ebf8
+--bg-soft: #f0f3fc
+--text: #141b35
+--text-muted: #4a5880
+--brand: #07b67f
+```
+
+### Design Rules
+- Dark mode default, smooth light/dark toggle accessible from anywhere in the app
+- All surfaces use glass morphism — `backdrop-filter: blur()` with semi-transparent panels
+- Soft corners everywhere: 12–28px border radius
+- Subtle mint glow on active/focus elements
+- Typography: Clean, modern sans-serif. Large confident headings, small muted labels
+- Spacing: Generous padding, breathable layouts — never cramped
+- Every interactive element has a hover + active state with smooth transition (200–300ms)
+- Motion: Smooth, decisive, low-friction. No jarring snaps. Use Framer Motion for all page transitions, modal entrances, card reveals, and list animations
+- Mobile-first: Designed for 375px+ screens, scales up to desktop beautifully
+
+---
+
+## CINEMATIC ONBOARDING & LOADING
+
+### App Launch Screen
+- Full screen deep navy background (#060915)
+- FocusOS logo animates in from scale 0.8 to 1.0 with fade — smooth Framer Motion spring
+- Tagline fades in below: *"Student Operating System"*
+- Electric mint progress bar animates across the bottom
+- Transitions into onboarding or home after load
+
+### First Launch Onboarding (4 steps)
+- Step 1: Identity — name, university (dropdown with UG, KNUST, US, UK, Custom), year of study
+- Step 2: Rhythm — preferred study hours, session length, break length
+- Step 3: Visual mode — dark or light mode selection with live preview
+- Step 4: Alerts — enable browser notifications toggle
+- Each step slides in with Framer Motion
+- Progress dots at bottom
+- Optional sample data load with confetti animation on finish
+
+---
+
+## NAVIGATION
+- Mobile: Fixed bottom nav bar with 5 icons (Home, Plan, Calendar, Schedule, Analytics) + floating action button
+- Desktop: Left sidebar nav
+- Active tab has mint underline/glow indicator
+- Page transitions: slide + fade with Framer Motion
+
+---
+
+## VIEWS & FEATURES
+
+### 1. Home (Focus Cockpit)
+- Animated greeting based on time of day ("Good morning, George")
+- Widget-style swipeable cards dashboard (use Framer Motion drag or react-swipeable):
+  - Today's Tasks card
+  - Focus Stats card (study time today, weekly streak)
+  - Upcoming Exams card
+  - GPA Snapshot card
+- XP bar with level and progress
+- Big "Start Focus Session" button — mint, glowing, prominent
+- Signal Center — alerts for overdue tasks, upcoming deadlines, attendance warnings
+- Quick shortcuts to all main sections
+- Exam mode auto-activates when an exam is within 48 hours (visual change on home)
+
+### 2. Plan (Task Management)
+- Create tasks with: title, priority (high/medium/low), estimated time, due date, course link
+- Filter by priority, course, due date
+- Task cards with smooth entrance animations
+- Swipe left to delete (mobile), swipe right to complete
+- Undo toast notification (5 seconds)
+- Start focus session directly from a task
+- Schedule task into a time block
+
+### 3. Calendar (Events & Timetable)
+- Monthly/weekly calendar view toggle
+- Add events: exams, deadlines, classes
+- Weekly timetable grid with attendance tracking per class
+- Auto-creates recovery tasks for missed classes
+- Gap study suggestions between classes
+- Prep task auto-generation before exams
+- Events color-coded by type (exam = danger red, deadline = warning orange, class = info blue)
+
+### 4. Schedule (Time Blocking)
+- Create time blocks linked to tasks
+- Conflict detection — warns if blocks overlap
+- Day view and list view toggle
+- Start focus session from a block
+- Mark block complete or delete
+- Smooth drag-to-reorder (desktop)
+
+### 5. Analytics (Progress Dashboard)
+- Completion rate, adherence rate, risk score — displayed as clean stat cards
+- Charts (Recharts):
+  - Tasks by priority (donut chart)
+  - Weekly focus trend (area chart)
+  - GPA trajectory by semester (line chart)
+- Progress bars with animated fill on load
+- Context warnings if metrics drop below threshold
+
+### 6. Smart Hub (Insights)
+- Context-aware study tips and recommendations
+- Burnout detection based on focus session patterns
+- Mood check-in (daily emoji selector)
+- Weekly comparison (this week vs last week)
+- Automatable actions: rescue overdue tasks, streak guard, auto-plan sessions
+- All recommendations rendered as clean actionable cards
+
+### 7. GPA Calculator
+- Multi-university grading scales: UG, KNUST, US/Canada 4.0, UK Percentage, Custom
+- Semester-based course entry (credit hours + grade or raw score)
+- Automatic weighted GPA calculation
+- Cumulative GPA across semesters
+- What-if simulator — adjust hypothetical grades, see GPA update in real time
+- Target GPA tracker — shows required average for remaining credits
+- Grade Predictor — math-based prediction using GPA trend + logged study hours
+- GPA trend line chart (Recharts)
+
+### 8. Focus Session System
+- Launch from task, block, or home
+- Configure duration: 25–90 min custom + Pomodoro presets (25/5, 50/10, 90/20)
+- Pomodoro Customizer — set custom work/break ratios and cycles
+- Running timer with circular progress ring (animated)
+- Pause/resume
+- Background ambient/lo-fi music player during session (Howler.js)
+- On end: quality selector (Done +10XP, Partial +5XP, Reschedule)
+- Keyboard shortcuts
+- Auto-restore session on reload
+- beforeunload warning if session is active
+
+### 9. Study Music Player
+- Built into focus session screen
+- Tracks: Lo-fi, Ambient, Rain, White Noise, Deep Focus
+- Play/pause, volume control, track selector
+- Minimal UI — doesn't distract from timer
+- Persists across session
+
+### 10. Notifications
+- Browser push notifications for:
+  - Task due reminders (1 hour before)
+  - Exam countdowns (24 hours and 1 hour before)
+  - Class reminders (15 minutes before)
+  - Streak at risk alert
+- Toggle per notification type in settings
+- In-app notification bell with unread count badge
+
+### 11. Profile & Settings
+- User profile (name, university, year)
+- Study preferences (session length, break length, daily goal)
+- Display settings (dark/light mode, font size, high contrast)
+- Course + GPA management
+- Notification preferences
+- Data export (JSON)
+- Account: Google sync, guest upgrade, sign out
+
+---
+
+## XP & ACHIEVEMENT SYSTEM
+- XP earned from: completing tasks, finishing focus sessions, maintaining streaks, hitting GPA targets
+- Level system: every 100XP = level up, animated level-up modal
+- 10 unlockable achievement badges with descriptions and unlock animations
+- Streak tracking: daily study streak with flame icon
+- All displayed on home and profile
+
+---
+
+## AUTH SYSTEM
+- Google OAuth (Firebase) — full cloud sync
+- Guest cloud (anonymous Firebase auth, upgradeable)
+- Local only (no auth, localStorage)
+- Mode selector on first launch
+- Seamless upgrade from guest to Google
+
+---
+
+## DATA & OFFLINE
+- Primary: Firestore (cloud) with localStorage fallback
+- Full offline support via Vite PWA plugin + service worker
+- Auto-sync when back online
+- PWA installable — manifest with FocusOS icon, name, theme color (#060915)
+- Splash screen on install
+
+---
+
+## ADDITIONAL UX
+- **Command Palette (Cmd+K)**: Global search + quick actions
+- **Right-click context menus** on tasks and blocks
+- **Haptic feedback** on mobile interactions (navigator.vibrate)
+- **Demo Tour**: 7-step guided walkthrough for new users
+- **Sample Data Loader**: Load example dataset with confetti
+- **Undo system**: Toast notifications with 5-second undo for destructive actions
+- **Accessibility**: High contrast mode, larger text mode, focus-visible states
+- **Smooth dark/light toggle**: Instant theme switch from anywhere, persisted to localStorage
+
+---
+
+## FIREBASE CONFIG
+Use environment variables for all Firebase config:
+```
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+```
+
+Firestore structure:
+```
+users/{uid}/
+  profile
+  tasks/{taskId}
+  events/{eventId}
+  blocks/{blockId}
+  sessions/{sessionId}
+  courses/{courseId}
+  classSessions/{classId}
+  moodLogs/{logId}
+  gpaData/{semesterId}
+```
+
+---
+
+## CODE QUALITY RULES
+- No dead code — every feature must be fully wired and functional
+- Component-based architecture — one component per feature, shared UI components in /components/ui
+- All animations via Framer Motion — no CSS keyframe hacks
+- Tailwind only for styling — no inline styles except Framer Motion dynamic values
+- Mobile-first Tailwind classes (base = mobile, md: = tablet, lg: = desktop)
+- Clean readable code with comments on complex logic
+
+---
+
+That's the full prompt. Copy and paste that straight into Replit Agent. It's detailed enough that it won't miss anything but structured enough that it won't get confused.
+
+When it starts building, watch the first output carefully — if the design system and home screen look right, the rest will follow. If it goes off brand early, stop it and correct it before it goes further.

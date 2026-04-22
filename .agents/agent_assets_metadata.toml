@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "ZfdnsJCh60sQJWi3GFtZO"
+uri = "file://artifacts/focusos/public/icon-512.png"
+type = "image"
+title = "FocusOS Logo Mint on Navy"
+
+[[generated]]
+id = "WrwxLBnn85RKEW7fB1lmc"
+uri = "file://artifacts/focusos/public/icon-192.png"
+type = "image"
+title = "FocusOS Logo Mint on Navy Small"
+
+[[generated]]
+id = "XGWhLbyDivP5TK47oTIZH"
+uri = "file://artifacts/focusos/public/apple-touch-icon.png"
+type = "image"
+title = "FocusOS Apple Touch Icon"
+
+[[generated]]
+id = "4SU0aWwGxVLfnxPAMM0yg"
+uri = "file://artifacts/focusos/public/texture.png"
+type = "image"
+title = "FocusOS Abstract Texture"
