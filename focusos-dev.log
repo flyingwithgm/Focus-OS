@@ -1,0 +1,7 @@
+
+> @workspace/focusos@0.0.0 dev C:\Users\ngeorge\Downloads\Focus-OS\artifacts\focusos
+> vite --config vite.config.ts --host 0.0.0.0
+
+C:\Users\ngeorge\Downloads\Focus-OS\artifacts\focusos:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/focusos@0.0.0 dev: `vite --config vite.config.ts --host 0.0.0.0`
+Exit status 1

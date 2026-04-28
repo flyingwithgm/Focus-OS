@@ -10,8 +10,12 @@ import { User, Settings, Database, Trash2, Shield, Moon, Sun, Clock, Calendar, R
 import { SCALES } from '@/lib/gpa';
 import { toast } from 'sonner';
 import { BADGES } from '@/lib/achievements';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 export default function Profile() {
+  const { user } = useAuth();
   const profile = useStore(state => state.profile);
   const courses = useStore(state => state.courses);
   const updateProfile = useStore(state => state.updateProfile);
@@ -66,12 +70,19 @@ export default function Profile() {
     reader.onload = (event) => {
       try {
         const content = event.target?.result as string;
-        JSON.parse(content); // Validate JSON
+        const parsed = JSON.parse(content);
+        if (!parsed || typeof parsed !== 'object' || !('state' in parsed)) {
+          throw new Error('Invalid backup shape');
+        }
         localStorage.setItem('focusos-storage', content);
         toast.success('Data imported. Reloading...');
         setTimeout(() => window.location.reload(), 1000);
       } catch (err) {
         toast.error('Invalid backup file');
+      } finally {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
     };
     reader.readAsText(file);
@@ -87,17 +98,49 @@ export default function Profile() {
     });
   };
 
+  const handleSignOut = async () => {
+    if (!auth) return;
+
+    try {
+      await signOut(auth);
+      toast.success('Signed out.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not sign out.';
+      toast.error(message);
+    }
+  };
+
   const earnedBadgeIds = new Set(profile.badges?.map(b => b.id) || []);
 
   const badgeIcons: Record<string, any> = { Target, Flame, Clock, CheckCircle, Shield, Moon, Sun, Calendar, RefreshCw, GraduationCap };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Profile & Settings.</h1>
+    <div className="page-shell">
+      <div className="section-card">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Personal system</div>
+        <h1 className="mt-2 balanced-title">Profile & Settings.</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Tune identity, study habits, accessibility, and backups from one place.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="glass">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" /> Connected Account
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-2xl bg-background/40 p-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Signed in as</p>
+              <p className="mt-2 font-semibold">{user?.displayName || profile.name || 'FocusOS user'}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{user?.email || 'No email available'}</p>
+            </div>
+            <Button variant="outline" className="w-full" onClick={handleSignOut}>
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+
         <Card className="glass">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -229,10 +272,10 @@ export default function Profile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2 mb-4">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row">
               <Input placeholder="Course Code" value={newCourseCode} onChange={e => setNewCourseCode(e.target.value)} className="bg-background/50 flex-1" />
-              <Input type="number" min="1" max="6" value={newCourseCredits} onChange={e => setNewCourseCredits(parseInt(e.target.value))} className="bg-background/50 w-20" />
-              <Button onClick={handleAddCourse} className="mint-glow">Add</Button>
+              <Input type="number" min="1" max="6" value={newCourseCredits} onChange={e => setNewCourseCredits(parseInt(e.target.value))} className="bg-background/50 sm:w-20" />
+              <Button onClick={handleAddCourse} className="mint-glow w-full sm:w-auto">Add</Button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {courses.map(c => (
@@ -280,19 +323,19 @@ export default function Profile() {
               <Database className="w-5 h-5" /> Data & Danger Zone
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-4">
-            <Button variant="outline" onClick={handleExport}>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto">
               <Download className="w-4 h-4 mr-2" /> Export JSON
             </Button>
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
               <Upload className="w-4 h-4 mr-2" /> Import JSON
             </Button>
             <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImport} />
-            <Button variant="outline" onClick={() => updateProfile({ demoTourDone: false })}>
+            <Button variant="outline" onClick={() => updateProfile({ demoTourDone: false })} className="w-full sm:w-auto">
               Replay Tour
             </Button>
             <div className="w-full h-px bg-border my-2" />
-            <Button variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground" onClick={handleReset}>
+            <Button variant="outline" className="w-full border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground sm:w-auto" onClick={handleReset}>
               <Trash2 className="w-4 h-4 mr-2" /> Reset All Data
             </Button>
           </CardContent>

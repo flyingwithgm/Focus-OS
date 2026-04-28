@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { useStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, X, Music, Volume2, Target, Settings2, SkipForward } from 'lucide-react';
+import { Play, Pause, X, Music, Volume2, Target, Settings2, SkipForward, Link2, Calendar, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,9 @@ import confetti from 'canvas-confetti';
 export default function Focus() {
   const [location, setLocation] = useLocation();
   const profile = useStore(state => state.profile);
+  const tasks = useStore(state => state.tasks);
+  const courses = useStore(state => state.courses);
+  const updateTask = useStore(state => state.updateTask);
   const activeSessionId = useStore(state => state.activeFocusSessionId);
   const setActiveSession = useStore(state => state.setActiveFocusSessionId);
   const addSession = useStore(state => state.addSession);
@@ -35,6 +38,24 @@ export default function Focus() {
   const timerRef = useRef<number | null>(null);
   const totalTime = (isBreak ? pomodoro.breakMin : pomodoro.workMin) * 60;
   const progress = ((totalTime - timeLeft) / totalTime) * 100;
+  const searchParams = new URLSearchParams(window.location.search);
+  const taskId = searchParams.get('taskId');
+  const linkedTask = tasks.find(task => task.id === taskId);
+  const linkedCourse = courses.find(course => course.id === linkedTask?.courseId);
+  const completedSubtasks = linkedTask?.subtasks?.filter(subtask => subtask.completed).length ?? 0;
+  const totalSubtasks = linkedTask?.subtasks?.length ?? 0;
+
+  const toggleLinkedSubtask = (subtaskId: string) => {
+    if (!linkedTask?.subtasks) return;
+    const nextSubtasks = linkedTask.subtasks.map((subtask) =>
+      subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed } : subtask
+    );
+    const allDone = nextSubtasks.length > 0 && nextSubtasks.every((subtask) => subtask.completed);
+    updateTask(linkedTask.id, {
+      subtasks: nextSubtasks,
+      completedAt: allDone ? new Date().toISOString() : undefined,
+    });
+  };
 
   const handleCycleComplete = useCallback(() => {
     audioPlayer.stop();
@@ -90,7 +111,8 @@ export default function Focus() {
       endedAt: new Date().toISOString(),
       plannedMin: pomodoro.workMin * pomodoro.cycles,
       actualMin: Math.max(1, actualMin),
-      quality
+      quality,
+      taskId: linkedTask?.id,
     });
     
     let xpEarned = 0;
@@ -103,7 +125,12 @@ export default function Focus() {
     if (quality === 'rescheduled') {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      addBlock({ title: 'Rescheduled Session', start: tomorrow.toISOString(), end: new Date(tomorrow.getTime() + pomodoro.workMin * 60000).toISOString() });
+      addBlock({
+        title: linkedTask ? `${linkedTask.title} (Rescheduled)` : 'Rescheduled Session',
+        taskId: linkedTask?.id,
+        start: tomorrow.toISOString(),
+        end: new Date(tomorrow.getTime() + pomodoro.workMin * 60000).toISOString()
+      });
     }
     
     if (Math.floor(profile.xp / 100) < Math.floor((profile.xp + xpEarned) / 100)) {
@@ -116,7 +143,7 @@ export default function Focus() {
     checkAchievements();
     setActiveSession(null);
     setLocation('/');
-  }, [pomodoro, timeLeft, currentCycle, addSession, addXP, addBlock, profile.xp, setActiveSession, setLocation]);
+  }, [pomodoro, timeLeft, currentCycle, addSession, addXP, addBlock, profile.xp, setActiveSession, setLocation, linkedTask]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -193,6 +220,50 @@ export default function Focus() {
         <h1 className="text-3xl font-bold tracking-tight text-center mb-8">Focus Setup</h1>
         
         <div className="glass p-6 rounded-3xl space-y-6">
+          {!linkedTask && (
+            <div className="rounded-2xl border border-white/10 bg-background/40 p-4">
+              <div className="text-sm font-semibold">No linked task</div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                You can still start a free-form focus session, or launch focus from Plan or Schedule to keep your work connected.
+              </p>
+            </div>
+          )}
+          {linkedTask && (
+            <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                <Link2 className="w-4 h-4" /> Linked Task
+              </div>
+              <div className="mt-2 text-lg font-bold">{linkedTask.title}</div>
+              <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  Due {new Date(linkedTask.dueAt).toLocaleString()}
+                </span>
+                {linkedCourse && <span>{linkedCourse.code}</span>}
+                <span>{linkedTask.estMin} min planned</span>
+                {totalSubtasks > 0 && <span>{completedSubtasks}/{totalSubtasks} subtasks done</span>}
+              </div>
+              {linkedTask.notes && (
+                <p className="mt-3 text-sm text-muted-foreground">{linkedTask.notes}</p>
+              )}
+              {totalSubtasks > 0 && (
+                <div className="mt-4 space-y-2">
+                  {linkedTask.subtasks?.map((subtask) => (
+                    <button
+                      key={subtask.id}
+                      type="button"
+                      onClick={() => toggleLinkedSubtask(subtask.id)}
+                      className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-background/40 px-3 py-2 text-left"
+                    >
+                      {subtask.completed ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+                      <span className={`text-sm ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>{subtask.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <Label className="text-muted-foreground uppercase tracking-wider text-xs font-bold mb-4 block">Presets</Label>
             <div className="flex flex-wrap gap-3">
@@ -208,7 +279,7 @@ export default function Focus() {
             <Label className="text-muted-foreground uppercase tracking-wider text-xs font-bold mb-2 flex items-center gap-2">
               <Settings2 className="w-4 h-4" /> Pomodoro Customizer
             </Label>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Work (min)</Label>
                 <Input type="number" value={pomodoro.workMin} onChange={e => setPomodoro({ ...pomodoro, workMin: parseInt(e.target.value) || 25 })} className="bg-background/50" />
@@ -257,7 +328,9 @@ export default function Focus() {
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-sm w-full space-y-6">
           <Target className="w-16 h-16 text-primary mx-auto mb-4" />
           <h2 className="text-3xl font-bold">Session Complete</h2>
-          <p className="text-muted-foreground">How was your focus?</p>
+          <p className="text-muted-foreground">
+            {linkedTask ? `How did "${linkedTask.title}" go?` : 'How was your focus?'}
+          </p>
           
           <div className="flex flex-col gap-3 mt-8">
             <Button size="lg" className="w-full text-lg mint-glow h-14" onClick={() => submitSession('done')}>
@@ -276,7 +349,7 @@ export default function Focus() {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden transition-colors duration-1000 ${isBreak ? 'bg-[#0a1835]' : 'bg-background'}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden px-4 transition-colors duration-1000 ${isBreak ? 'bg-[#0a1835]' : 'bg-background'}`}>
       <div 
         className="absolute inset-0 opacity-10 transition-opacity duration-1000 pointer-events-none"
         style={{ 
@@ -284,7 +357,7 @@ export default function Focus() {
         }}
       />
 
-      <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-10">
+      <div className="absolute left-4 right-4 top-4 z-10 flex items-center justify-between sm:left-6 sm:right-6 sm:top-6">
         <Button variant="ghost" size="icon" onClick={handleEndEarly} className="rounded-full text-muted-foreground hover:bg-destructive/20 hover:text-destructive">
           <X className="w-6 h-6" />
         </Button>
@@ -297,7 +370,35 @@ export default function Focus() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="relative w-72 h-72 sm:w-96 sm:h-96 mb-12">
+        {linkedTask && (
+          <div className="mb-6 w-full max-w-xl space-y-3 px-2 sm:px-0">
+            <div className="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm text-primary text-center">
+              Focusing on: <span className="font-semibold">{linkedTask.title}</span>
+            </div>
+            {totalSubtasks > 0 && (
+              <div className="rounded-2xl border border-white/10 bg-background/40 p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="text-sm font-semibold">Checklist</div>
+                  <div className="text-xs text-muted-foreground">{completedSubtasks}/{totalSubtasks} done</div>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {linkedTask.subtasks?.map((subtask) => (
+                    <button
+                      key={subtask.id}
+                      type="button"
+                      onClick={() => toggleLinkedSubtask(subtask.id)}
+                      className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-background/50 px-3 py-2 text-left"
+                    >
+                      {subtask.completed ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+                      <span className={`text-sm ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>{subtask.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="relative mb-8 h-72 w-72 sm:mb-12 sm:h-96 sm:w-96">
           <svg className="w-full h-full transform -rotate-90">
             <circle cx="50%" cy="50%" r="48%" className="stroke-secondary fill-none" strokeWidth="8" />
             <circle 
@@ -316,17 +417,17 @@ export default function Focus() {
           </div>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-3 sm:gap-4">
           <Button 
             size="lg" 
-            className={`h-20 w-20 rounded-full ${isActive ? 'bg-secondary hover:bg-secondary/80 text-foreground' : `${isBreak ? 'bg-info shadow-info/30' : 'bg-primary mint-glow shadow-primary/30'} text-primary-foreground shadow-lg`} transition-all duration-300 transform hover:scale-105 active:scale-95`}
+            className={`h-16 w-16 rounded-full sm:h-20 sm:w-20 ${isActive ? 'bg-secondary hover:bg-secondary/80 text-foreground' : `${isBreak ? 'bg-info shadow-info/30' : 'bg-primary mint-glow shadow-primary/30'} text-primary-foreground shadow-lg`} transition-all duration-300 transform hover:scale-105 active:scale-95`}
             onClick={handlePlayPause}
           >
-            {isActive ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
+            {isActive ? <Pause className="h-7 w-7 sm:h-8 sm:w-8" /> : <Play className="ml-1 h-7 w-7 sm:h-8 sm:w-8" />}
           </Button>
           
-          <Button size="icon" variant="ghost" className="h-20 w-20 rounded-full bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground" onClick={handleCycleComplete}>
-            <SkipForward className="w-6 h-6" />
+          <Button size="icon" variant="ghost" className="h-16 w-16 rounded-full bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground sm:h-20 sm:w-20" onClick={handleCycleComplete}>
+            <SkipForward className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
         </div>
       </div>
@@ -357,4 +458,3 @@ export default function Focus() {
     </div>
   );
 }
-

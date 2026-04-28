@@ -42,6 +42,8 @@ export interface Task {
   priority: Priority;
   estMin: number;
   dueAt: string;
+  notes?: string;
+  subtasks?: { id: string; title: string; completed: boolean }[];
   courseId?: string;
   completedAt?: string;
   createdAt: string;
@@ -98,4 +100,3 @@ export interface Notification {
   scheduledFor: string;
   read: boolean;
 }
-

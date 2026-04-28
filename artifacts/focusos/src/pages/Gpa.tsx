@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { calculateSemesterGPA, calculateCumulativeGPA, SCALES } from '@/lib/gpa';
 import { Plus, Trash2, Target, TrendingUp, AlertCircle, Wand2 } from 'lucide-react';
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, YAxis } from 'recharts';
 import { motion } from 'framer-motion';
+
+const GpaTrajectoryChart = lazy(() =>
+  import('@/components/charts/GpaTrajectoryChart').then((module) => ({ default: module.GpaTrajectoryChart }))
+);
 
 export default function Gpa() {
   const profile = useStore(state => state.profile);
@@ -40,8 +44,13 @@ export default function Gpa() {
   const handleAddCourseToSemester = (semId: string) => {
     const sem = semesters.find(s => s.id === semId);
     if (!sem) return;
+    if (courses.length === 0) return;
+
+    const existingCourseIds = new Set(sem.courses.map((course) => course.courseId));
+    const nextCourse = courses.find((course) => !existingCourseIds.has(course.id)) ?? courses[0];
+
     updateSemester(semId, {
-      courses: [...sem.courses, { courseId: `custom-${Date.now()}`, credits: 3 }]
+      courses: [...sem.courses, { courseId: nextCourse.id, credits: nextCourse.credits }]
     });
   };
 
@@ -125,14 +134,9 @@ export default function Gpa() {
 
         <Card className="glass md:col-span-2">
           <CardContent className="p-4 h-[160px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <Tooltip contentStyle={{ backgroundColor: 'var(--color-background)', borderColor: 'var(--color-border)', borderRadius: '8px' }} />
-                <XAxis dataKey="name" stroke="var(--color-muted-foreground)" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis domain={['auto', 'auto']} stroke="var(--color-muted-foreground)" fontSize={10} tickLine={false} axisLine={false} width={30} />
-                <Line type="monotone" dataKey="gpa" stroke="var(--color-info)" strokeWidth={3} dot={{ r: 4, fill: 'var(--color-info)' }} />
-              </LineChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<Skeleton className="h-full w-full rounded-2xl" />}>
+              <GpaTrajectoryChart chartData={chartData} />
+            </Suspense>
           </CardContent>
         </Card>
       </div>
@@ -219,7 +223,9 @@ export default function Gpa() {
               
               {sem.courses.map((course, idx) => {
                 const globalCourse = courses.find(c => c.id === course.courseId);
-                const title = globalCourse ? globalCourse.code : `Course ${idx + 1}`;
+                const title = globalCourse
+                  ? `${globalCourse.code}${globalCourse.title && globalCourse.title !== globalCourse.code ? ` - ${globalCourse.title}` : ''}`
+                  : `Course ${idx + 1}`;
                 const gradeKeys = Object.keys(scaleInfo.grades);
                 const currentGradeIdx = gradeKeys.indexOf(course.grade || gradeKeys[0]);
                 
@@ -227,12 +233,32 @@ export default function Gpa() {
                   <div key={idx} className="flex flex-col gap-2 bg-background/30 p-2 rounded-xl border border-white/5">
                     <div className="grid grid-cols-12 gap-2 items-center">
                       <div className="col-span-5 md:col-span-6">
-                        <Input 
-                          value={title} 
-                          readOnly={!!globalCourse}
-                          className="h-8 bg-transparent border-none shadow-none focus-visible:ring-0 px-1 text-sm font-medium"
-                          placeholder="Course Name"
-                        />
+                        <Select
+                          value={course.courseId}
+                          onValueChange={(value) => {
+                            const selectedCourse = courses.find((item) => item.id === value);
+                            const newCourses = [...sem.courses];
+                            newCourses[idx] = {
+                              ...newCourses[idx],
+                              courseId: value,
+                              credits: selectedCourse?.credits ?? newCourses[idx].credits,
+                            };
+                            updateSemester(sem.id, { courses: newCourses });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 bg-background/50 border-white/10 text-sm">
+                            <SelectValue placeholder="Select course">
+                              {title}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {courses.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {item.code}{item.title && item.title !== item.code ? ` - ${item.title}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="col-span-3">
                         <Input 
@@ -292,9 +318,20 @@ export default function Gpa() {
               })}
             </div>
 
-            <Button variant="outline" size="sm" className="w-full mt-2 border-dashed text-muted-foreground" onClick={() => handleAddCourseToSemester(sem.id)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2 border-dashed text-muted-foreground"
+              onClick={() => handleAddCourseToSemester(sem.id)}
+              disabled={courses.length === 0}
+            >
               <Plus className="w-4 h-4 mr-2" /> Add Course
             </Button>
+            {courses.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Add your courses in Profile first so GPA entries can stay linked to the same synced course list.
+              </p>
+            )}
           </div>
         ))}
 

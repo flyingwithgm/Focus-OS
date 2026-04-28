@@ -17,37 +17,46 @@ interface FocusStore {
   // Actions
   updateProfile: (updates: Partial<Profile>) => void;
   updatePreferences: (updates: Partial<Profile['preferences']>) => void;
+  replaceProfile: (profile: Profile) => void;
   addXP: (amount: number) => void;
   
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   completeTask: (id: string) => void;
+  replaceTasks: (tasks: Task[]) => void;
 
   addCourse: (course: Omit<Course, 'id'>) => void;
   updateCourse: (id: string, updates: Partial<Course>) => void;
   deleteCourse: (id: string) => void;
+  replaceCourses: (courses: Course[]) => void;
 
   addEvent: (event: Omit<Event, 'id'>) => void;
   updateEvent: (id: string, updates: Partial<Event>) => void;
   deleteEvent: (id: string) => void;
+  replaceEvents: (events: Event[]) => void;
 
   addBlock: (block: Omit<Block, 'id'>) => void;
   updateBlock: (id: string, updates: Partial<Block>) => void;
   deleteBlock: (id: string) => void;
+  replaceBlocks: (blocks: Block[]) => void;
 
   addSession: (session: Omit<Session, 'id'>) => void;
   updateSession: (id: string, updates: Partial<Session>) => void;
+  replaceSessions: (sessions: Session[]) => void;
 
   addMoodLog: (log: Omit<MoodLog, 'id'>) => void;
+  replaceMoodLogs: (moodLogs: MoodLog[]) => void;
 
   addSemester: (semester: Omit<Semester, 'id'>) => void;
   updateSemester: (id: string, updates: Partial<Semester>) => void;
   deleteSemester: (id: string) => void;
+  replaceSemesters: (semesters: Semester[]) => void;
 
   addNotification: (notification: Omit<Notification, 'id'>) => void;
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
+  replaceNotifications: (notifications: Notification[]) => void;
 
   loadSampleData: () => void;
   resetData: () => void;
@@ -56,7 +65,7 @@ interface FocusStore {
   setActiveFocusSessionId: (id: string | null) => void;
 }
 
-const defaultProfile: Profile = {
+export const defaultProfile: Profile = {
   name: '',
   university: '',
   year: '',
@@ -96,6 +105,7 @@ export const useStore = create<FocusStore>()(
       updatePreferences: (updates) => set((state) => ({
         profile: { ...state.profile, preferences: { ...state.profile.preferences, ...updates } }
       })),
+      replaceProfile: (profile) => set(() => ({ profile })),
       addXP: (amount) => set((state) => {
         const newXp = state.profile.xp + amount;
         const newLevel = Math.floor(newXp / 100) + 1;
@@ -114,6 +124,7 @@ export const useStore = create<FocusStore>()(
       completeTask: (id) => set((state) => ({
         tasks: state.tasks.map(t => t.id === id ? { ...t, completedAt: new Date().toISOString() } : t)
       })),
+      replaceTasks: (tasks) => set(() => ({ tasks })),
 
       addCourse: (course) => set((state) => ({
         courses: [...state.courses, { ...course, id: crypto.randomUUID() }]
@@ -124,6 +135,7 @@ export const useStore = create<FocusStore>()(
       deleteCourse: (id) => set((state) => ({
         courses: state.courses.filter(c => c.id !== id)
       })),
+      replaceCourses: (courses) => set(() => ({ courses })),
 
       addEvent: (event) => set((state) => ({
         events: [...state.events, { ...event, id: crypto.randomUUID() }]
@@ -134,6 +146,7 @@ export const useStore = create<FocusStore>()(
       deleteEvent: (id) => set((state) => ({
         events: state.events.filter(e => e.id !== id)
       })),
+      replaceEvents: (events) => set(() => ({ events })),
 
       addBlock: (block) => set((state) => ({
         blocks: [...state.blocks, { ...block, id: crypto.randomUUID() }]
@@ -144,6 +157,7 @@ export const useStore = create<FocusStore>()(
       deleteBlock: (id) => set((state) => ({
         blocks: state.blocks.filter(b => b.id !== id)
       })),
+      replaceBlocks: (blocks) => set(() => ({ blocks })),
 
       addSession: (session) => set((state) => ({
         sessions: [...state.sessions, { ...session, id: crypto.randomUUID() }]
@@ -151,10 +165,12 @@ export const useStore = create<FocusStore>()(
       updateSession: (id, updates) => set((state) => ({
         sessions: state.sessions.map(s => s.id === id ? { ...s, ...updates } : s)
       })),
+      replaceSessions: (sessions) => set(() => ({ sessions })),
 
       addMoodLog: (log) => set((state) => ({
         moodLogs: [...state.moodLogs, { ...log, id: crypto.randomUUID() }]
       })),
+      replaceMoodLogs: (moodLogs) => set(() => ({ moodLogs })),
 
       addSemester: (semester) => set((state) => ({
         semesters: [...state.semesters, { ...semester, id: crypto.randomUUID() }]
@@ -165,6 +181,7 @@ export const useStore = create<FocusStore>()(
       deleteSemester: (id) => set((state) => ({
         semesters: state.semesters.filter(s => s.id !== id)
       })),
+      replaceSemesters: (semesters) => set(() => ({ semesters })),
 
       addNotification: (notification) => set((state) => ({
         notifications: [...state.notifications, { ...notification, id: crypto.randomUUID() }]
@@ -175,6 +192,7 @@ export const useStore = create<FocusStore>()(
       clearNotifications: () => set((state) => ({
         notifications: state.notifications.filter(n => !n.read)
       })),
+      replaceNotifications: (notifications) => set(() => ({ notifications })),
 
       setActiveFocusSessionId: (id) => set({ activeFocusSessionId: id }),
 

@@ -73,6 +73,35 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/recharts")) {
+            return "charts";
+          }
+
+          if (id.includes("node_modules/framer-motion")) {
+            return "motion";
+          }
+
+          if (
+            id.includes("node_modules/date-fns") ||
+            id.includes("node_modules/wouter") ||
+            id.includes("node_modules/zustand")
+          ) {
+            return "app-core";
+          }
+
+          if (
+            id.includes("node_modules/@radix-ui") ||
+            id.includes("node_modules/vaul") ||
+            id.includes("node_modules/cmdk")
+          ) {
+            return "ui-kit";
+          }
+        },
+      },
+    },
   },
   server: {
     port,
