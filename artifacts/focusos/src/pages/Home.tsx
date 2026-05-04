@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation } from 'wouter';
 import { useStore } from '@/lib/store';
 import { motion } from 'framer-motion';
-import { Target, CheckCircle2, AlertCircle, BookOpen, ChevronRight, Zap, Flame, CalendarClock } from 'lucide-react';
+import { Target, CheckCircle2, AlertCircle, BookOpen, ChevronRight, Zap, Flame, CalendarClock, ArrowUpRight, Orbit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { format, isToday, differenceInHours } from 'date-fns';
@@ -38,6 +38,7 @@ export default function Home() {
     (acc, block) => acc + Math.max(0, (new Date(block.end).getTime() - new Date(block.start).getTime()) / 60000),
     0
   );
+  const completionRate = plannedTodayMin > 0 ? Math.min(100, Math.round((completedTodayMin / plannedTodayMin) * 100)) : 0;
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -54,29 +55,55 @@ export default function Home() {
         </div>
       )}
 
-      <header className="section-card overflow-hidden">
+      <header className="hero-panel">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"
+          className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
         >
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">Daily cockpit</div>
-            <h1 className="balanced-title">{greeting()}, {profile.name || 'Commander'}.</h1>
-            <p className="text-muted-foreground">Level {profile.level} • {profile.xp} XP</p>
-          </div>
-          <div className="self-start rounded-2xl bg-background/40 px-4 py-3 sm:text-right">
-            <div className="flex items-center gap-1 text-warning sm:justify-end">
-              <Flame className="w-5 h-5 fill-warning" />
-              <span className="font-bold">{profile.streak.count} Day Streak</span>
+            <h1 className="balanced-title max-w-2xl">{greeting()}, {profile.name || 'Commander'}.</h1>
+            <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
+              You have {pendingTasks.length} open task{pendingTasks.length === 1 ? '' : 's'}, {todayBlocks.length} live block{todayBlocks.length === 1 ? '' : 's'}, and {todayFocusMin} focused minutes already banked today.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                Level {profile.level}
+              </span>
+              <span className="rounded-full border border-white/10 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                {profile.xp} XP total
+              </span>
+              <span className="rounded-full border border-white/10 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+                {completionRate}% of planned work done
+              </span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Keep momentum alive today.</p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:w-[22rem]">
+            <div className="rounded-2xl border border-white/10 bg-background/40 px-4 py-4">
+              <div className="flex items-center gap-2 text-warning">
+                <Flame className="w-5 h-5 fill-warning" />
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]">Streak</span>
+              </div>
+              <div className="mt-3 text-3xl font-bold">{profile.streak.count}</div>
+              <p className="mt-1 text-xs text-muted-foreground">days of showing up</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-background/40 px-4 py-4">
+              <div className="flex items-center gap-2 text-info">
+                <Orbit className="w-5 h-5" />
+                <span className="text-xs font-semibold uppercase tracking-[0.2em]">Focus Goal</span>
+              </div>
+              <div className="mt-3 text-3xl font-bold">{todayFocusMin}</div>
+              <p className="mt-1 text-xs text-muted-foreground">of {profile.preferences.dailyGoalMin} planned minutes</p>
+            </div>
           </div>
         </motion.div>
+
         <motion.div
           initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
-          className="relative mt-5 h-3 overflow-hidden rounded-full bg-background/60"
+          className="relative z-10 mt-6 h-3 overflow-hidden rounded-full bg-background/60"
         >
           <motion.div
             initial={{ width: 0 }}
@@ -85,6 +112,50 @@ export default function Home() {
             className="absolute inset-y-0 left-0 bg-primary mint-glow"
           />
         </motion.div>
+
+        <div className="relative z-10 mt-6 grid gap-3 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => setLocation('/plan')}
+            className="spotlight-card text-left transition-transform hover:-translate-y-0.5"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Today Tasks</span>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="mt-3 text-3xl font-bold">{todayTasks.length}</div>
+            <p className="mt-1 text-sm text-muted-foreground">Tasks that need attention before midnight.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setLocation('/schedule')}
+            className="spotlight-card text-left transition-transform hover:-translate-y-0.5"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Schedule</span>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="mt-3 text-3xl font-bold">
+              {completedTodayMin}
+              <span className="text-base text-muted-foreground"> / {plannedTodayMin || 0}m</span>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">What you planned today versus what you already closed.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setLocation('/calendar')}
+            className="spotlight-card text-left transition-transform hover:-translate-y-0.5"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Exams</span>
+              <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="mt-3 text-3xl font-bold">{upcomingExams.length}</div>
+            <p className="mt-1 text-sm text-muted-foreground">Upcoming exam milestones on your timeline.</p>
+          </button>
+        </div>
       </header>
 
       <div className="space-y-2">
@@ -110,7 +181,7 @@ export default function Home() {
 
       <div className="mobile-scroll-row hide-scrollbar sm:grid-cols-2 xl:grid-cols-4">
         <Card
-          className="glass min-w-[250px] snap-start cursor-pointer border-l-4 border-l-primary transition-colors hover:border-primary/50 sm:min-w-0"
+          className="spotlight-card min-w-[250px] snap-start cursor-pointer border-l-4 border-l-primary transition-all hover:-translate-y-0.5 hover:border-primary/50 sm:min-w-0"
           onClick={() => setLocation('/plan')}
         >
           <CardContent className="p-6">
@@ -126,7 +197,7 @@ export default function Home() {
         </Card>
 
         <Card
-          className="glass min-w-[250px] snap-start cursor-pointer border-l-4 border-l-info transition-colors hover:border-info/50 sm:min-w-0"
+          className="spotlight-card min-w-[250px] snap-start cursor-pointer border-l-4 border-l-info transition-all hover:-translate-y-0.5 hover:border-info/50 sm:min-w-0"
           onClick={() => setLocation('/analytics')}
         >
           <CardContent className="p-6">
@@ -144,7 +215,7 @@ export default function Home() {
         </Card>
 
         <Card
-          className="glass min-w-[250px] snap-start cursor-pointer border-l-4 border-l-warning transition-colors hover:border-warning/50 sm:min-w-0"
+          className="spotlight-card min-w-[250px] snap-start cursor-pointer border-l-4 border-l-warning transition-all hover:-translate-y-0.5 hover:border-warning/50 sm:min-w-0"
           onClick={() => setLocation('/calendar')}
         >
           <CardContent className="p-6">
@@ -160,7 +231,7 @@ export default function Home() {
         </Card>
 
         <Card
-          className="glass min-w-[250px] snap-start cursor-pointer border-l-4 border-l-primary/70 transition-colors hover:border-primary/50 sm:min-w-0"
+          className="spotlight-card min-w-[250px] snap-start cursor-pointer border-l-4 border-l-primary/70 transition-all hover:-translate-y-0.5 hover:border-primary/50 sm:min-w-0"
           onClick={() => setLocation('/schedule')}
         >
           <CardContent className="p-6">
@@ -194,7 +265,7 @@ export default function Home() {
           </h3>
           <div className="space-y-3">
             {upcomingExams.slice(0, 3).map(exam => (
-              <div key={exam.id} className="glass flex items-center justify-between rounded-xl border-l-4 border-l-warning p-4">
+              <div key={exam.id} className="spotlight-card flex items-center justify-between border-l-4 border-l-warning p-4">
                 <div>
                   <h4 className="font-medium">{exam.title}</h4>
                   <p className="text-sm text-muted-foreground">{format(new Date(exam.start), 'MMM d, h:mm a')}</p>

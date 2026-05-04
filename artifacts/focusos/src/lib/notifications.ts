@@ -1,5 +1,4 @@
 import { useStore } from './store';
-import { format, isSameDay } from 'date-fns';
 
 export function requestPermission() {
   if (!('Notification' in window)) return;
@@ -30,3 +29,14 @@ export function triggerNotification(title: string, options: NotificationOptions)
   new Notification(title, options);
 }
 
+export function triggerFocusNotification(title: string, body: string) {
+  triggerNotification(title, {
+    body,
+    tag: 'focus-session',
+    renotify: true,
+  });
+
+  if ('vibrate' in navigator) {
+    navigator.vibrate([120, 80, 120]);
+  }
+}

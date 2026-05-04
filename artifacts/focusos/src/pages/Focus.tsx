@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { audioPlayer } from '@/lib/audio';
+import { triggerFocusNotification } from '@/lib/notifications';
 import { toast } from 'sonner';
 import { checkAchievements } from '@/lib/achievements';
 import confetti from 'canvas-confetti';
@@ -44,6 +45,21 @@ export default function Focus() {
   const linkedCourse = courses.find(course => course.id === linkedTask?.courseId);
   const completedSubtasks = linkedTask?.subtasks?.filter(subtask => subtask.completed).length ?? 0;
   const totalSubtasks = linkedTask?.subtasks?.length ?? 0;
+  const isPomodoroValid =
+    pomodoro.workMin >= 10 &&
+    pomodoro.workMin <= 180 &&
+    pomodoro.breakMin >= 1 &&
+    pomodoro.breakMin <= 60 &&
+    pomodoro.cycles >= 1 &&
+    pomodoro.cycles <= 8;
+  const focusConfigHint =
+    pomodoro.workMin < 10 || pomodoro.workMin > 180
+      ? 'Work sessions should stay between 10 and 180 minutes.'
+      : pomodoro.breakMin < 1 || pomodoro.breakMin > 60
+        ? 'Breaks should stay between 1 and 60 minutes.'
+        : pomodoro.cycles < 1 || pomodoro.cycles > 8
+          ? 'Use between 1 and 8 cycles so the session stays realistic.'
+          : `You are setting up ${pomodoro.workMin * pomodoro.cycles} minutes of focus time with ${pomodoro.breakMin}-minute breaks.`;
 
   const toggleLinkedSubtask = (subtaskId: string) => {
     if (!linkedTask?.subtasks) return;
@@ -62,6 +78,8 @@ export default function Focus() {
     setIsActive(false);
     
     if (isBreak) {
+      audioPlayer.playCue('complete');
+      triggerFocusNotification('Focus session complete', linkedTask ? `You finished "${linkedTask.title}". Log the quality of the session.` : 'Your focus session is ready to be logged.');
       setIsBreak(false);
       setTimeLeft(pomodoro.workMin * 60);
       if (currentCycle >= pomodoro.cycles) {
@@ -70,11 +88,13 @@ export default function Focus() {
         setCurrentCycle(c => c + 1);
       }
     } else {
+      audioPlayer.playCue('break');
+      triggerFocusNotification('Break time', linkedTask ? `Take a short reset before you continue "${linkedTask.title}".` : 'Take a short reset before the next focus block.');
       setIsBreak(true);
       setTimeLeft(pomodoro.breakMin * 60);
       toast.info('Time for a break!');
     }
-  }, [isBreak, pomodoro, currentCycle]);
+  }, [currentCycle, isBreak, linkedTask, pomodoro]);
 
   useEffect(() => {
     if (isActive && timeLeft > 0) {
@@ -176,9 +196,16 @@ export default function Focus() {
   }, [phase, isActive]);
 
   const startTimer = () => {
+    if (!isPomodoroValid) {
+      toast.error('Adjust the focus settings so they describe a realistic session.');
+      return;
+    }
+
+    audioPlayer.primeCues();
     setPhase('timer');
     setTimeLeft(pomodoro.workMin * 60);
     setIsActive(true);
+    audioPlayer.playCue('start');
     if (!activeSessionId) {
       setActiveSession(crypto.randomUUID());
     }
@@ -293,6 +320,9 @@ export default function Focus() {
                 <Input type="number" value={pomodoro.cycles} onChange={e => setPomodoro({ ...pomodoro, cycles: parseInt(e.target.value) || 1 })} className="bg-background/50" />
               </div>
             </div>
+            <p className={`text-sm ${isPomodoroValid ? 'text-muted-foreground' : 'text-warning'}`}>
+              {focusConfigHint}
+            </p>
           </div>
 
           <div className="space-y-4 pt-4 border-t border-white/5">
@@ -315,7 +345,7 @@ export default function Focus() {
           </div>
         </div>
 
-        <Button size="lg" className="w-full h-16 text-xl rounded-2xl mint-glow" onClick={startTimer}>
+        <Button size="lg" className="w-full h-16 text-xl rounded-2xl mint-glow" onClick={startTimer} disabled={!isPomodoroValid}>
           Start Focus
         </Button>
       </div>

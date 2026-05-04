@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware';
 import { Profile, Course, Task, Event, Block, Session, MoodLog, Semester, Notification } from './types';
 import { generateSampleData } from './sampleData';
 
+export const FOCUSOS_STORAGE_KEY = 'focusos-storage';
+export const FOCUSOS_LAST_USER_KEY = 'focusos-last-user';
+
 interface FocusStore {
   profile: Profile;
   courses: Course[];
@@ -86,6 +89,15 @@ export const defaultProfile: Profile = {
   onboardingDone: false,
   demoTourDone: false,
 };
+
+export function clearFocusOsLocalCache() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.removeItem(FOCUSOS_STORAGE_KEY);
+  window.localStorage.removeItem(FOCUSOS_LAST_USER_KEY);
+}
 
 export const useStore = create<FocusStore>()(
   persist(
@@ -219,7 +231,7 @@ export const useStore = create<FocusStore>()(
       }),
     }),
     {
-      name: 'focusos-storage',
+      name: FOCUSOS_STORAGE_KEY,
     }
   )
 );

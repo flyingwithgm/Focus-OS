@@ -1,14 +1,17 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
+import { ToastAction } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Spinner } from "@/components/ui/spinner";
 import NotFound from "@/pages/not-found";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useRef } from "react";
 import { requestPermission, scheduleAll } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { FirebaseSync } from "@/components/auth/FirebaseSync";
+import { toast } from "@/hooks/use-toast";
+import { registerSW } from "virtual:pwa-register";
 
 import { AppShell } from "@/components/layout/AppShell";
 
@@ -54,6 +57,39 @@ function Router() {
   );
 }
 
+function PwaUpdateBridge() {
+  const hasShownUpdateToast = useRef(false);
+
+  useEffect(() => {
+    const updateServiceWorker = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        if (hasShownUpdateToast.current) {
+          return;
+        }
+
+        hasShownUpdateToast.current = true;
+        toast({
+          title: "Update ready",
+          description: "A newer version of FocusOS is available on this device.",
+          duration: Infinity,
+          action: (
+            <ToastAction altText="Refresh the app" onClick={() => updateServiceWorker(true)}>
+              Refresh
+            </ToastAction>
+          ),
+        });
+      },
+    });
+
+    return () => {
+      hasShownUpdateToast.current = false;
+    };
+  }, []);
+
+  return null;
+}
+
 function App() {
   const store = useStore();
 
@@ -91,6 +127,7 @@ function App() {
       <TooltipProvider>
         <AuthGate>
           <FirebaseSync />
+          <PwaUpdateBridge />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <Router />
           </WouterRouter>

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useStore } from '@/lib/store';
 import { useLocation } from 'wouter';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Target, Plus, CheckCircle2, ListTodo, Target as GpaIcon, Settings, Moon, Sun } from 'lucide-react';
+import { Search, Target, Plus, Target as GpaIcon, Settings, Moon, Sun } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -22,17 +22,13 @@ export function CommandPalette() {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-background/80 backdrop-blur-sm" onClick={() => setOpen(false)}>
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-lg glass rounded-2xl overflow-hidden shadow-2xl border-white/10"
-        onClick={e => e.stopPropagation()}
-      >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="w-full max-w-lg overflow-hidden border-white/10 p-0 glass">
+        <div className="sr-only">
+          <DialogTitle>Command Menu</DialogTitle>
+          <DialogDescription>Search for actions, navigation targets, and quick settings in FocusOS.</DialogDescription>
+        </div>
         <Command
           className="w-full bg-transparent"
           label="Command Menu"
@@ -98,7 +94,7 @@ export function CommandPalette() {
 
           </Command.List>
         </Command>
-      </motion.div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

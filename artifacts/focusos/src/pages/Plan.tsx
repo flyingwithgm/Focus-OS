@@ -107,9 +107,26 @@ export default function Plan() {
     if (filter === 'overdue') return new Date(t.dueAt) < new Date();
     return t.priority === filter;
   });
+  const isNewTaskValid =
+    newTask.title.trim().length > 0 &&
+    newTask.estMin >= 5 &&
+    newTask.estMin <= 480 &&
+    newTask.dueDate.length > 0 &&
+    newTask.dueTime.length > 0;
+  const newTaskHint =
+    !newTask.title.trim()
+      ? 'Give the task a clear title so it can show up well in Plan, Schedule, and Focus.'
+      : newTask.estMin < 5 || newTask.estMin > 480
+        ? 'Estimated minutes should stay between 5 and 480.'
+        : !newTask.dueDate || !newTask.dueTime
+          ? 'Pick when this task is actually due so the planner can prioritize it correctly.'
+          : 'Looks good. You can add subtasks or notes if this needs more structure.';
 
   const handleAdd = () => {
-    if (!newTask.title.trim()) return;
+    if (!isNewTaskValid) {
+      toast.error('Finish the missing task details before adding it.');
+      return;
+    }
     addTask({
       title: newTask.title,
       priority: newTask.priority,
@@ -387,6 +404,9 @@ export default function Plan() {
             <Plus className="w-5 h-5" />
           </Button>
         </div>
+        <p className={`text-sm ${isNewTaskValid ? 'text-muted-foreground' : 'text-warning'}`}>
+          {newTaskHint}
+        </p>
         <div className="grid gap-2 text-sm sm:grid-cols-[120px_140px]">
           <Select value={newTask.priority} onValueChange={v => setNewTask({ ...newTask, priority: v as any })}>
             <SelectTrigger className="w-[120px] bg-background/50 border-white/10"><SelectValue /></SelectTrigger>
@@ -540,6 +560,9 @@ export default function Plan() {
                 className="bg-background/50"
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Keep estimates realistic so auto-scheduling and focus planning stay useful.
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 type="date"
@@ -635,6 +658,9 @@ export default function Plan() {
                 className="bg-background/50"
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Choose a slot that starts before it ends and does not overlap another block.
+            </p>
             <Button className="w-full mint-glow" onClick={handleScheduleTask}>
               Add To Schedule
             </Button>

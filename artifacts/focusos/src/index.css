@@ -199,6 +199,42 @@
     backdrop-filter: blur(24px);
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
+  .hero-panel {
+    @apply relative overflow-hidden rounded-[1.9rem] p-5 sm:p-7;
+    background:
+      radial-gradient(circle at top right, color-mix(in srgb, hsl(var(--primary)) 18%, transparent) 0%, transparent 34%),
+      linear-gradient(145deg, color-mix(in srgb, hsl(var(--secondary)) 88%, transparent), color-mix(in srgb, hsl(var(--background)) 72%, transparent));
+    backdrop-filter: blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  }
+  .hero-panel::after {
+    content: '';
+    position: absolute;
+    inset: auto -12% -38% auto;
+    width: 16rem;
+    height: 16rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, hsl(var(--chart-2)) 16%, transparent);
+    filter: blur(26px);
+    pointer-events: none;
+  }
+  .spotlight-card {
+    @apply relative overflow-hidden rounded-[1.6rem] p-5;
+    background:
+      linear-gradient(160deg, color-mix(in srgb, hsl(var(--secondary)) 88%, transparent), color-mix(in srgb, hsl(var(--background)) 74%, transparent));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(24px);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.14);
+  }
+  .spotlight-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.24), transparent);
+    pointer-events: none;
+  }
   .mobile-scroll-row {
     @apply -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:px-0;
   }

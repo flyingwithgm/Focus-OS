@@ -5,6 +5,8 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  // Google auth popup/redirect handlers must resolve against the real Firebase auth domain.
+  // Using the current Vercel host causes /__/auth/* requests to land back in the SPA.
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,

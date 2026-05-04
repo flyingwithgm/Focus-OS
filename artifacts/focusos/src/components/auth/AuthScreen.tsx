@@ -13,9 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 import { toast } from 'sonner';
 
 type AuthMode = 'signin' | 'signup';
+const GOOGLE_REDIRECT_PENDING_KEY = 'focusos.googleRedirectPending';
 
 function mapAuthError(error: unknown) {
   if (typeof error === 'object' && error !== null && 'code' in error) {
@@ -68,7 +70,13 @@ export function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [googleRedirecting, setGoogleRedirecting] = useState(false);
+  const [googleRedirecting, setGoogleRedirecting] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return window.sessionStorage.getItem(GOOGLE_REDIRECT_PENDING_KEY) === 'true';
+  });
 
   const title = useMemo(
     () => (mode === 'signin' ? 'Welcome back' : 'Create your workspace'),
@@ -78,16 +86,24 @@ export function AuthScreen() {
   React.useEffect(() => {
     if (!auth) return;
 
+    const redirectPending = window.sessionStorage.getItem(GOOGLE_REDIRECT_PENDING_KEY) === 'true';
+    if (redirectPending) {
+      setGoogleRedirecting(true);
+    }
+
     getRedirectResult(auth)
       .then((result) => {
         if (result?.user) {
+          window.sessionStorage.removeItem(GOOGLE_REDIRECT_PENDING_KEY);
           toast.success('Signed in with Google.');
         }
       })
       .catch((error) => {
+        window.sessionStorage.removeItem(GOOGLE_REDIRECT_PENDING_KEY);
         toast.error(mapAuthError(error));
       })
       .finally(() => {
+        window.sessionStorage.removeItem(GOOGLE_REDIRECT_PENDING_KEY);
         setGoogleRedirecting(false);
       });
   }, []);
@@ -147,14 +163,15 @@ export function AuthScreen() {
 
       if (
         code === 'auth/popup-blocked' ||
-        code === 'auth/cancelled-popup-request' ||
-        code === 'auth/popup-closed-by-user'
+        code === 'auth/cancelled-popup-request'
       ) {
         try {
+          window.sessionStorage.setItem(GOOGLE_REDIRECT_PENDING_KEY, 'true');
           setGoogleRedirecting(true);
           await signInWithRedirect(auth, googleProvider);
           return;
         } catch (redirectError) {
+          window.sessionStorage.removeItem(GOOGLE_REDIRECT_PENDING_KEY);
           setGoogleRedirecting(false);
           toast.error(mapAuthError(redirectError));
           return;
@@ -166,6 +183,17 @@ export function AuthScreen() {
       setSubmitting(false);
     }
   };
+
+  if (googleRedirecting) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center px-4">
+        <div className="section-card flex w-full max-w-md items-center gap-3 text-sm text-muted-foreground">
+          <Spinner className="size-5" />
+          Finishing Google sign-in...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center px-4 py-10">

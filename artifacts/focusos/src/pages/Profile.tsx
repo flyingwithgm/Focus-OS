@@ -13,6 +13,7 @@ import { BADGES } from '@/lib/achievements';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
+import { clearFocusOsLocalCache, FOCUSOS_STORAGE_KEY } from '@/lib/store';
 
 export default function Profile() {
   const { user } = useAuth();
@@ -51,7 +52,7 @@ export default function Profile() {
   };
 
   const handleExport = () => {
-    const data = localStorage.getItem('focusos-storage');
+    const data = localStorage.getItem(FOCUSOS_STORAGE_KEY);
     if (!data) return;
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -74,7 +75,7 @@ export default function Profile() {
         if (!parsed || typeof parsed !== 'object' || !('state' in parsed)) {
           throw new Error('Invalid backup shape');
         }
-        localStorage.setItem('focusos-storage', content);
+        localStorage.setItem(FOCUSOS_STORAGE_KEY, content);
         toast.success('Data imported. Reloading...');
         setTimeout(() => window.location.reload(), 1000);
       } catch (err) {
@@ -108,6 +109,22 @@ export default function Profile() {
       const message = error instanceof Error ? error.message : 'Could not sign out.';
       toast.error(message);
     }
+  };
+
+  const handleReloadCloudData = () => {
+    if (!user) {
+      toast.error('Sign in first so we can reload cloud data.');
+      return;
+    }
+
+    if (!confirm('This clears the local device cache and reloads data from your signed-in cloud account. Continue?')) {
+      return;
+    }
+
+    resetData();
+    clearFocusOsLocalCache();
+    toast.success('Local cache cleared. Reloading cloud data...');
+    window.setTimeout(() => window.location.reload(), 300);
   };
 
   const earnedBadgeIds = new Set(profile.badges?.map(b => b.id) || []);
@@ -331,6 +348,9 @@ export default function Profile() {
               <Upload className="w-4 h-4 mr-2" /> Import JSON
             </Button>
             <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImport} />
+            <Button variant="outline" onClick={handleReloadCloudData} className="w-full sm:w-auto">
+              <RefreshCw className="w-4 h-4 mr-2" /> Reload Cloud Data
+            </Button>
             <Button variant="outline" onClick={() => updateProfile({ demoTourDone: false })} className="w-full sm:w-auto">
               Replay Tour
             </Button>

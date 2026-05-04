@@ -25,6 +25,30 @@ export default function Calendar() {
   const [newEvent, setNewEvent] = useState({ title: '', type: 'class' as const, date: format(new Date(), 'yyyy-MM-dd'), startTime: '09:00', endTime: '10:30', courseId: 'none' });
 
   const selectedCourse = courses.find((course) => course.id === newEvent.courseId);
+  const eventTitle =
+    newEvent.type === 'class' && selectedCourse
+      ? `${selectedCourse.code} Class`
+      : newEvent.title.trim();
+  const eventStart = new Date(`${newEvent.date}T${newEvent.startTime}`);
+  const eventEnd = new Date(`${newEvent.date}T${newEvent.endTime}`);
+  const isEventRangeValid =
+    !Number.isNaN(eventStart.getTime()) &&
+    !Number.isNaN(eventEnd.getTime()) &&
+    eventEnd > eventStart;
+  const isEventValid =
+    Boolean(eventTitle) &&
+    isEventRangeValid &&
+    (newEvent.type !== 'class' || newEvent.courseId !== 'none');
+  const eventHint =
+    newEvent.type === 'class' && newEvent.courseId === 'none'
+      ? 'Choose the course first so the class can stay synced with timetable and GPA views.'
+      : !eventTitle
+        ? 'Add a clear title for exams or deadlines so they stand out in the calendar.'
+        : !isEventRangeValid
+          ? 'Make sure the end time is after the start time.'
+          : newEvent.type === 'class'
+            ? 'Class events repeat weekly, so pick the real course and start time carefully.'
+            : 'This event is ready to be added to the calendar.';
 
   const handleAddEvent = () => {
     if (newEvent.type === 'class' && newEvent.courseId === 'none') {
@@ -32,18 +56,15 @@ export default function Calendar() {
       return;
     }
 
-    const title =
-      newEvent.type === 'class' && selectedCourse
-        ? `${selectedCourse.code} Class`
-        : newEvent.title.trim();
+    const title = eventTitle;
 
     if (!title) {
       toast.error('Add a title for this event');
       return;
     }
 
-    const start = new Date(`${newEvent.date}T${newEvent.startTime}`);
-    const end = new Date(`${newEvent.date}T${newEvent.endTime}`);
+    const start = eventStart;
+    const end = eventEnd;
 
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       toast.error('Choose a valid date and time');
@@ -193,7 +214,10 @@ export default function Calendar() {
                     </p>
                   )}
                 </div>
-                <Button className="w-full mint-glow" onClick={handleAddEvent} disabled={newEvent.type === 'class' && courses.length === 0}>Add to Calendar</Button>
+                <p className={`text-sm ${isEventValid ? 'text-muted-foreground' : 'text-warning'}`}>
+                  {eventHint}
+                </p>
+                <Button className="w-full mint-glow" onClick={handleAddEvent} disabled={!isEventValid || (newEvent.type === 'class' && courses.length === 0)}>Add to Calendar</Button>
               </div>
             </DialogContent>
           </Dialog>

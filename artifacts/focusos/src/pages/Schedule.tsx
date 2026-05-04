@@ -27,6 +27,19 @@ export default function Schedule() {
   const [view, setView] = useState<'list' | 'day'>('list');
   const [editingBlock, setEditingBlock] = useState<Block | null>(null);
   const [editDraft, setEditDraft] = useState({ title: '', date: '', startTime: '09:00', endTime: '10:00' });
+  const draftStart = new Date(new Date().toDateString() + ` ${startTime}`);
+  const draftEnd = new Date(new Date().toDateString() + ` ${endTime}`);
+  const isDraftRangeValid =
+    !Number.isNaN(draftStart.getTime()) &&
+    !Number.isNaN(draftEnd.getTime()) &&
+    draftEnd > draftStart;
+  const isDraftValid = newTitle.trim().length > 0 && isDraftRangeValid;
+  const scheduleHint =
+    !newTitle.trim()
+      ? 'Name the block after the work you actually want to get done.'
+      : !isDraftRangeValid
+        ? 'Choose a start and end time where the end is later than the start.'
+        : 'Looks good. We will still stop you if this overlaps another block.';
 
   const getTaskForBlock = (taskId?: string) => tasks.find(task => task.id === taskId);
   const openFocusForBlock = (taskId?: string) => {
@@ -97,7 +110,10 @@ export default function Schedule() {
   };
 
   const handleAdd = () => {
-    if (!newTitle) return;
+    if (!isDraftValid) {
+      toast.error('Finish the block details before adding it.');
+      return;
+    }
     const now = new Date();
     const startParts = startTime.split(':');
     const endParts = endTime.split(':');
@@ -313,9 +329,12 @@ export default function Schedule() {
           <label className="text-xs text-muted-foreground ml-1">End</label>
           <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="bg-background/50 border-white/10" />
         </div>
-        <Button onClick={handleAdd} className="mint-glow h-11 w-full p-0 sm:h-10 sm:w-10">
+        <Button onClick={handleAdd} className="mint-glow h-11 w-full p-0 sm:h-10 sm:w-10" disabled={!isDraftValid}>
           <Plus className="w-5 h-5" />
         </Button>
+        <p className={`w-full text-sm ${isDraftValid ? 'text-muted-foreground' : 'text-warning'}`}>
+          {scheduleHint}
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -429,6 +448,9 @@ export default function Schedule() {
                 className="bg-background/50"
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Keep the block title specific and make sure the end time stays after the start time.
+            </p>
             <Button className="w-full mint-glow" onClick={handleSaveBlock}>
               Save Block
             </Button>

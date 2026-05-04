@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { browserLocalPersistence, onAuthStateChanged, setPersistence, type User } from 'firebase/auth';
 import { auth, firebaseEnabled } from '@/lib/firebase';
+import { clearFocusOsLocalCache, FOCUSOS_LAST_USER_KEY, useStore } from '@/lib/store';
 
 interface AuthContextValue {
   user: User | null;
@@ -34,6 +35,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .finally(() => {
         unsubscribe = onAuthStateChanged(firebaseAuth, (nextUser) => {
+          const resetData = useStore.getState().resetData;
+          const previousUserId =
+            typeof window === 'undefined'
+              ? null
+              : window.localStorage.getItem(FOCUSOS_LAST_USER_KEY);
+
+          if (!nextUser) {
+            resetData();
+            clearFocusOsLocalCache();
+          } else if (previousUserId && previousUserId !== nextUser.uid) {
+            resetData();
+            clearFocusOsLocalCache();
+            window.localStorage.setItem(FOCUSOS_LAST_USER_KEY, nextUser.uid);
+          } else if (typeof window !== 'undefined') {
+            window.localStorage.setItem(FOCUSOS_LAST_USER_KEY, nextUser.uid);
+          }
+
           setUser(nextUser);
           setLoading(false);
         });
